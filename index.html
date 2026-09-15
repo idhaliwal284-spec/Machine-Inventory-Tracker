@@ -103,28 +103,34 @@
             background-color: #dc3545;
             color: white;
             border: none;
-            padding: 6px 10px;
             border-radius: 4px;
             cursor: pointer;
-            font-weight: bold;
         }
         button.done-btn {
             background-color: #28a745;
             color: white;
             border: none;
-            padding: 6px 10px;
             border-radius: 4px;
             cursor: pointer;
-            font-weight: bold;
         }
         button.done-btn:hover {
             background-color: #218838;
+        }
+        /* Style specifically for square icon buttons */
+        .icon-btn {
+            width: 32px;
+            height: 32px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
         }
         .toggle-btn {
             background-color: #e2e6ea;
             color: #333;
             border: 1px solid #dae0e5;
-            padding: 6px 10px;
+            padding: 5px 10px;
             font-size: 12px;
             font-weight: bold;
             border-radius: 4px;
@@ -373,6 +379,7 @@
                             <th>Sales Order(s)</th>
                             <th>Customer</th>
                             <th>Qty</th>
+                            <th>Details</th>
                             <th>Action</th>
                         </tr>
                     </thead>
@@ -535,7 +542,6 @@
             const groupBy = document.getElementById('dash-group').value;
             const globalSearch = (document.getElementById('dash-global-search')?.value || '').toLowerCase();
             
-            // Stats ALWAYS reflect the selected product dropdown
             const qtyOnHand = inventory[selectedProduct] || 0;
             const productAssignments = assignments.filter(a => a.product === selectedProduct);
             const qtyAssigned = productAssignments.reduce((sum, a) => sum + parseInt(a.qty), 0);
@@ -902,22 +908,18 @@
             }
         }
 
-        // --- NEW: COMPLETE ASSIGNMENT (DONE) LOGIC ---
         function completeAssignment(id) {
             if(confirm("Mark this order as Done? This will officially deduct the quantity from your On Hand inventory and move the record to History.")) {
                 const assignmentIndex = assignments.findIndex(a => a.id === id);
                 if (assignmentIndex > -1) {
                     const assignment = assignments[assignmentIndex];
                     
-                    // Deduct from on-hand inventory
                     const currentQty = inventory[assignment.product] || 0;
                     inventory[assignment.product] = Math.max(0, currentQty - assignment.qty);
                     
-                    // Stamp completion date and move to history archive
                     assignment.completedAtStr = new Date().toLocaleString();
                     completedAssignments.push(assignment);
                     
-                    // Remove from active list
                     assignments.splice(assignmentIndex, 1);
                     
                     saveData();
@@ -993,7 +995,7 @@
                         currentGroup = itemGroup;
                         const groupTr = document.createElement('tr');
                         let groupName = groupBy === 'customer' ? 'Customer' : (groupBy === 'so' ? 'Sales Order (SO)' : 'Product');
-                        groupTr.innerHTML = `<td colspan="7" style="background-color: #d1ecf1; font-weight: bold; color: #0c5460;">${groupName}: ${currentGroup}</td>`;
+                        groupTr.innerHTML = `<td colspan="8" style="background-color: #d1ecf1; font-weight: bold; color: #0c5460;">${groupName}: ${currentGroup}</td>`;
                         assignBody.appendChild(groupTr);
                     }
                 }
@@ -1040,11 +1042,9 @@
                     serialHTML += `</div>`;
                     soHTML += `</div>`;
                     
-                    // Build the toggle button logic into the Action row flexbox
                     btnHTML = `<button id="admin-btn-toggle-${a.id}" class="toggle-btn" style="white-space: nowrap;" onclick="toggleAdminDetails('${a.id}', ${a.qty})">${btnText}</button>`;
                 }
 
-                // Render Action Column with Side-by-Side Flexbox Alignment
                 tr.innerHTML = `
                     <td><small style="color: #555;">${displayDate}</small></td>
                     <td>${a.product}</td>
@@ -1055,11 +1055,11 @@
                         <input type="number" class="inline-input" style="width: 60px;" value="${a.qty}" 
                                onchange="updateQuantity('${a.id}', this.value)" min="1">
                     </td>
+                    <td style="min-width: 100px;">${btnHTML}</td>
                     <td style="white-space: nowrap;">
                         <div style="display: flex; gap: 5px; align-items: flex-start;">
-                            ${btnHTML}
-                            <button class="done-btn" title="Mark as shipped and deduct from inventory" onclick="completeAssignment('${a.id}')">Done</button>
-                            <button class="delete-btn" title="Delete without affecting inventory" onclick="deleteAssignment('${a.id}')">Delete</button>
+                            <button class="done-btn icon-btn" title="Mark as shipped and deduct from inventory" onclick="completeAssignment('${a.id}')">✔️</button>
+                            <button class="delete-btn icon-btn" title="Delete without affecting inventory" onclick="deleteAssignment('${a.id}')">🗑️</button>
                         </div>
                     </td>
                 `;
