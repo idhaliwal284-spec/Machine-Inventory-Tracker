@@ -155,7 +155,7 @@
             border: 1px solid var(--border);
             padding: 12px;
             text-align: left;
-            vertical-align: top;
+            vertical-align: middle;
         }
         th {
             background-color: var(--secondary);
@@ -288,15 +288,15 @@
 
             <div class="admin-section">
                 <h3>2. Manage Inventory (Qty on Hand)</h3>
-                <select id="admin-inv-product"></select>
-                <input type="number" id="admin-inv-qty" placeholder="Set Total Qty" min="0">
-                <button class="action-btn" onclick="updateInventory()">Update Qty</button>
-                <br><br>
-                <table style="width: 50%;">
+                <p style="font-size: 14px; color: #666; margin-top: 0;">Enter the amount of new stock received to automatically add it to the current total.</p>
+                <table style="width: 100%; max-width: 900px;">
                     <thead>
                         <tr>
                             <th>Product</th>
-                            <th>Current Total Qty on Hand</th>
+                            <th>Current Qty on Hand</th>
+                            <th>Add / Remove Qty</th>
+                            <th>New Total</th>
+                            <th>Action</th>
                         </tr>
                     </thead>
                     <tbody id="admin-inv-table-body">
@@ -436,7 +436,8 @@
         }
 
         function populateDropdowns() {
-            const dropdowns = ['dash-product', 'admin-inv-product', 'admin-assign-product'];
+            // Note: admin-inv-product has been removed, so it only populates the two remaining dropdowns
+            const dropdowns = ['dash-product', 'admin-assign-product'];
             dropdowns.forEach(id => {
                 const select = document.getElementById(id);
                 if (!select) return;
@@ -528,7 +529,7 @@
                         currentGroup = itemGroup;
                         const groupTr = document.createElement('tr');
                         let groupName = groupBy === 'customer' ? 'Customer' : 'Sales Order (SO)';
-                        groupTr.innerHTML = `<td colspan="7" style="background-color: #d1ecf1; font-weight: bold; color: #0c5460;">${groupName}: ${currentGroup}</td>`;
+                        groupTr.innerHTML = `<td colspan="6" style="background-color: #d1ecf1; font-weight: bold; color: #0c5460;">${groupName}: ${currentGroup}</td>`;
                         tbody.appendChild(groupTr);
                     }
                 }
@@ -661,16 +662,47 @@
             }
         }
 
-        function updateInventory() {
-            const product = document.getElementById('admin-inv-product').value;
-            const qty = parseInt(document.getElementById('admin-inv-qty').value);
+        // --- NEW LIVE INVENTORY MATH FUNCTIONS ---
+        function calcNewTotal(index, currentQty) {
+            const addInput = document.getElementById(`add-qty-${index}`);
+            const addVal = parseInt(addInput.value) || 0;
+            const newTotalEl = document.getElementById(`new-total-${index}`);
             
-            if (isNaN(qty) || qty < 0) return alert("Please enter a valid quantity.");
+            const newTotal = currentQty + addVal;
+            newTotalEl.innerText = newTotal;
+            
+            if (addVal > 0) {
+                newTotalEl.style.color = '#28a745'; // Green for incoming stock
+            } else if (addVal < 0) {
+                newTotalEl.style.color = '#dc3545'; // Red for deducted stock
+            } else {
+                newTotalEl.style.color = 'inherit';
+            }
+        }
 
-            inventory[product] = qty;
+        function confirmInventoryUpdate(product, index) {
+            const addInput = document.getElementById(`add-qty-${index}`);
+            const addVal = parseInt(addInput.value);
+            
+            if (isNaN(addVal) || addVal === 0) {
+                alert("Please enter a valid quantity to add or subtract.");
+                return;
+            }
+
+            const currentQty = inventory[product] || 0;
+            const newQty = currentQty + addVal;
+            
+            if (newQty < 0) {
+                alert("Error: Total quantity cannot be less than 0.");
+                return;
+            }
+
+            inventory[product] = newQty;
             saveData();
-            alert(`${product} updated to ${qty}`);
-            document.getElementById('admin-inv-qty').value = '';
+            alert(`Success! ${product} inventory updated by ${addVal}. New Total: ${newQty}`);
+            
+            // The Firebase onSnapshot will automatically re-render the tables, but we can clear the input explicitly
+            addInput.value = '';
         }
 
         function generateDynamicInputs() {
@@ -811,9 +843,19 @@
             if(!invBody) return;
             
             invBody.innerHTML = '';
-            PRODUCTS.forEach(p => {
+            PRODUCTS.forEach((p, index) => {
+                const currentQty = inventory[p] || 0;
                 const tr = document.createElement('tr');
-                tr.innerHTML = `<td>${p}</td><td><strong>${inventory[p]}</strong></td>`;
+                tr.innerHTML = `
+                    <td>${p}</td>
+                    <td>${currentQty}</td>
+                    <td>
+                        <input type="number" id="add-qty-${index}" class="inline-input" style="width: 100px; padding: 8px;" 
+                               oninput="calcNewTotal(${index}, ${currentQty})" placeholder="e.g. 5 or -2">
+                    </td>
+                    <td><strong id="new-total-${index}">${currentQty}</strong></td>
+                    <td><button class="action-btn" style="padding: 6px 12px; font-size: 14px;" onclick="confirmInventoryUpdate('${p}', ${index})">Confirm</button></td>
+                `;
                 invBody.appendChild(tr);
             });
 
