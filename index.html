@@ -114,7 +114,7 @@
             color: var(--primary);
         }
         .stat-card .number.forecast {
-            color: #28a745; /* Green for forecast */
+            color: #28a745; 
         }
         /* Tables */
         table {
@@ -147,6 +147,20 @@
             color: #666;
             margin-bottom: 4px;
             font-weight: bold;
+        }
+        /* Inline Input Styling */
+        .inline-input {
+            padding: 6px;
+            font-size: 14px;
+            margin: 0;
+            width: 90%;
+            box-sizing: border-box;
+            border: 1px solid #aaa;
+        }
+        .inline-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 3px rgba(0,86,179,0.5);
         }
     </style>
 </head>
@@ -238,7 +252,8 @@
                 <h3>3. Assign Order</h3>
                 <form id="assign-form" onsubmit="event.preventDefault(); assignOrder();">
                     <select id="admin-assign-product" required></select>
-                    <input type="text" id="admin-serial" placeholder="Serial Number" required>
+                    <!-- REQUIRED ATTRIBUTE REMOVED BELOW -->
+                    <input type="text" id="admin-serial" placeholder="Serial Number (Optional)">
                     <input type="text" id="admin-so" placeholder="Sales Order (SO)" required>
                     <input type="text" id="admin-customer" placeholder="Customer Name" required>
                     <input type="number" id="admin-qty" placeholder="Quantity" min="1" required>
@@ -269,7 +284,7 @@
 
     <script>
         // Constants & Initial Data
-        let PRODUCTS = JSON.parse(localStorage.getItem('asset_products')) || Array.from({length: 9}, (_, i) => `Product ${i + 1}`);
+        let PRODUCTS = JSON.parse(localStorage.getItem('asset_products')) || Array.from({length: 20}, (_, i) => `Product ${i + 1}`);
         let inventory = JSON.parse(localStorage.getItem('asset_inventory')) || {};
         let assignments = JSON.parse(localStorage.getItem('asset_assignments')) || [];
 
@@ -310,7 +325,7 @@
             const dropdowns = ['dash-product', 'admin-inv-product', 'admin-assign-product'];
             dropdowns.forEach(id => {
                 const select = document.getElementById(id);
-                const currentValue = select.value; // Remember selection if re-rendering
+                const currentValue = select.value; 
                 
                 select.innerHTML = '';
                 PRODUCTS.forEach(p => {
@@ -352,7 +367,7 @@
                 }
                 tr.innerHTML = `
                     <td>${a.product}</td>
-                    <td>${a.serial}</td>
+                    <td>${a.serial ? a.serial : '<span style="color:#888;">N/A</span>'}</td>
                     <td>${a.so}</td>
                     <td>${a.customer}</td>
                     <td>${a.qty}</td>
@@ -385,7 +400,7 @@
             // Gather all new names and detect changes
             for (let i = 0; i < 9; i++) {
                 let newName = document.getElementById(`prod-name-${i}`).value.trim();
-                if (!newName) newName = `Product ${i + 1}`; // Fallback if left blank
+                if (!newName) newName = `Product ${i + 1}`; 
                 
                 newNames.push(newName);
                 
@@ -447,7 +462,7 @@
 
         function assignOrder() {
             const product = document.getElementById('admin-assign-product').value;
-            const serial = document.getElementById('admin-serial').value;
+            const serial = document.getElementById('admin-serial').value; // Now allows empty string
             const so = document.getElementById('admin-so').value;
             const customer = document.getElementById('admin-customer').value;
             const qty = parseInt(document.getElementById('admin-qty').value);
@@ -469,6 +484,17 @@
             // Clear form
             document.getElementById('assign-form').reset();
             alert("Order Assigned Successfully!");
+        }
+
+        // NEW FUNCTION: Update serial number inline
+        function updateSerialNumber(id, newSerial) {
+            const assignment = assignments.find(a => a.id === id);
+            if (assignment) {
+                assignment.serial = newSerial;
+                saveData();
+                updateDashboard(); 
+                // We don't re-render the admin table so you don't lose focus while typing
+            }
         }
 
         function deleteAssignment(id) {
@@ -500,7 +526,11 @@
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td>${a.product}</td>
-                    <td>${a.serial}</td>
+                    <td>
+                        <input type="text" class="inline-input" value="${a.serial || ''}" 
+                               onchange="updateSerialNumber('${a.id}', this.value)" 
+                               placeholder="Add Serial...">
+                    </td>
                     <td>${a.so}</td>
                     <td>${a.customer}</td>
                     <td>${a.qty}</td>
