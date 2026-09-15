@@ -278,7 +278,21 @@
             <h2>Admin Control Panel</h2>
             
             <div class="admin-section">
-                <h3>1. Manage Product Names</h3>
+                <h3>1. Assign Order</h3>
+                <form id="assign-form" onsubmit="event.preventDefault(); assignOrder();">
+                    <select id="admin-assign-product" required></select>
+                    <input type="text" id="admin-customer" placeholder="Customer Name" required>
+                    <input type="number" id="admin-qty" placeholder="Quantity" min="1" value="1" required oninput="generateDynamicInputs()">
+                    
+                    <!-- Dynamic Serial & SO Inputs render here -->
+                    <div id="assign-dynamic-container" style="margin-top: 15px; display: flex; flex-direction: column;"></div>
+                    
+                    <button type="submit" class="action-btn" style="margin-top: 10px; display: block;">Assign Unit</button>
+                </form>
+            </div>
+
+            <div class="admin-section">
+                <h3>2. Manage Product Names</h3>
                 <div id="admin-product-names-list">
                     <!-- Populated by JS -->
                 </div>
@@ -287,7 +301,7 @@
             </div>
 
             <div class="admin-section">
-                <h3>2. Manage Inventory (Qty on Hand)</h3>
+                <h3>3. Manage Inventory (Qty on Hand)</h3>
                 <p style="font-size: 14px; color: #666; margin-top: 0;">Enter the amount of new stock received to automatically add it to the current total.</p>
                 <table style="width: 100%; max-width: 900px;">
                     <thead>
@@ -302,20 +316,6 @@
                     <tbody id="admin-inv-table-body">
                     </tbody>
                 </table>
-            </div>
-
-            <div class="admin-section">
-                <h3>3. Assign Order</h3>
-                <form id="assign-form" onsubmit="event.preventDefault(); assignOrder();">
-                    <select id="admin-assign-product" required></select>
-                    <input type="text" id="admin-customer" placeholder="Customer Name" required>
-                    <input type="number" id="admin-qty" placeholder="Quantity" min="1" value="1" required oninput="generateDynamicInputs()">
-                    
-                    <!-- Dynamic Serial & SO Inputs render here -->
-                    <div id="assign-dynamic-container" style="margin-top: 15px; display: flex; flex-direction: column;"></div>
-                    
-                    <button type="submit" class="action-btn" style="margin-top: 10px; display: block;">Assign Unit</button>
-                </form>
             </div>
 
             <div class="admin-section">
@@ -436,7 +436,6 @@
         }
 
         function populateDropdowns() {
-            // Note: admin-inv-product has been removed, so it only populates the two remaining dropdowns
             const dropdowns = ['dash-product', 'admin-assign-product'];
             dropdowns.forEach(id => {
                 const select = document.getElementById(id);
@@ -529,7 +528,7 @@
                         currentGroup = itemGroup;
                         const groupTr = document.createElement('tr');
                         let groupName = groupBy === 'customer' ? 'Customer' : 'Sales Order (SO)';
-                        groupTr.innerHTML = `<td colspan="6" style="background-color: #d1ecf1; font-weight: bold; color: #0c5460;">${groupName}: ${currentGroup}</td>`;
+                        groupTr.innerHTML = `<td colspan="7" style="background-color: #d1ecf1; font-weight: bold; color: #0c5460;">${groupName}: ${currentGroup}</td>`;
                         tbody.appendChild(groupTr);
                     }
                 }
@@ -672,9 +671,9 @@
             newTotalEl.innerText = newTotal;
             
             if (addVal > 0) {
-                newTotalEl.style.color = '#28a745'; // Green for incoming stock
+                newTotalEl.style.color = '#28a745'; 
             } else if (addVal < 0) {
-                newTotalEl.style.color = '#dc3545'; // Red for deducted stock
+                newTotalEl.style.color = '#dc3545'; 
             } else {
                 newTotalEl.style.color = 'inherit';
             }
@@ -701,7 +700,6 @@
             saveData();
             alert(`Success! ${product} inventory updated by ${addVal}. New Total: ${newQty}`);
             
-            // The Firebase onSnapshot will automatically re-render the tables, but we can clear the input explicitly
             addInput.value = '';
         }
 
