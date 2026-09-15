@@ -106,7 +106,6 @@
             border-radius: 4px;
             cursor: pointer;
         }
-        /* New styling for the expand/collapse button */
         .toggle-btn {
             background-color: #e2e6ea;
             color: #333;
@@ -116,7 +115,6 @@
             font-weight: bold;
             border-radius: 4px;
             cursor: pointer;
-            margin-top: 5px;
             display: inline-block;
         }
         .toggle-btn:hover {
@@ -267,6 +265,7 @@
                         <th>Sales Order (SO)</th>
                         <th>Customer</th>
                         <th>Qty</th>
+                        <th>Details</th>
                     </tr>
                 </thead>
                 <tbody id="dash-table-body">
@@ -529,7 +528,7 @@
                         currentGroup = itemGroup;
                         const groupTr = document.createElement('tr');
                         let groupName = groupBy === 'customer' ? 'Customer' : 'Sales Order (SO)';
-                        groupTr.innerHTML = `<td colspan="6" style="background-color: #d1ecf1; font-weight: bold; color: #0c5460;">${groupName}: ${currentGroup}</td>`;
+                        groupTr.innerHTML = `<td colspan="7" style="background-color: #d1ecf1; font-weight: bold; color: #0c5460;">${groupName}: ${currentGroup}</td>`;
                         tbody.appendChild(groupTr);
                     }
                 }
@@ -545,6 +544,8 @@
                 
                 let serialHTML = '';
                 let soHTML = '';
+                let btnHTML = '';
+                
                 let isExpanded = expandedDashRows.has(a.id);
                 let displayStyle = isExpanded ? 'block' : 'none';
                 let btnText = isExpanded ? '▲ Hide Details' : `▼ Show ${a.qty - 1} More`;
@@ -572,8 +573,8 @@
                     serialHTML += `</div>`;
                     soHTML += `</div>`;
                     
-                    // Add Toggle Button
-                    serialHTML += `<button id="dash-btn-toggle-${a.id}" class="toggle-btn" onclick="toggleDashDetails('${a.id}', ${a.qty})">${btnText}</button>`;
+                    // Create Toggle Button for the Actions column
+                    btnHTML = `<button id="dash-btn-toggle-${a.id}" class="toggle-btn" style="width: 100%; white-space: nowrap;" onclick="toggleDashDetails('${a.id}', ${a.qty})">${btnText}</button>`;
                 }
                 
                 tr.innerHTML = `
@@ -583,6 +584,7 @@
                     <td>${soHTML}</td>
                     <td>${a.customer}</td>
                     <td>${a.qty}</td>
+                    <td style="min-width: 120px;">${btnHTML}</td>
                 `;
                 tbody.appendChild(tr);
             });
@@ -871,6 +873,8 @@
                 
                 let serialHTML = '';
                 let soHTML = '';
+                let btnHTML = '';
+                
                 let isExpanded = expandedAdminRows.has(a.id);
                 let displayStyle = isExpanded ? 'block' : 'none';
                 let btnText = isExpanded ? '▲ Hide Details' : `▼ Show ${a.qty - 1} More`;
@@ -902,8 +906,8 @@
                     serialHTML += `</div>`;
                     soHTML += `</div>`;
                     
-                    // Add Toggle Button
-                    serialHTML += `<button id="admin-btn-toggle-${a.id}" class="toggle-btn" onclick="toggleAdminDetails('${a.id}', ${a.qty})">${btnText}</button>`;
+                    // Create Toggle Button for the Actions column
+                    btnHTML = `<button id="admin-btn-toggle-${a.id}" class="toggle-btn" style="width: 100%; white-space: nowrap; margin-bottom: 5px;" onclick="toggleAdminDetails('${a.id}', ${a.qty})">${btnText}</button><br>`;
                 }
 
                 tr.innerHTML = `
@@ -916,7 +920,10 @@
                         <input type="number" class="inline-input" style="width: 60px;" value="${a.qty}" 
                                onchange="updateQuantity('${a.id}', this.value)" min="1">
                     </td>
-                    <td><button class="delete-btn" onclick="deleteAssignment('${a.id}')">Delete</button></td>
+                    <td style="min-width: 120px;">
+                        ${btnHTML}
+                        <button class="delete-btn" style="width: 100%;" onclick="deleteAssignment('${a.id}')">Delete</button>
+                    </td>
                 `;
                 assignBody.appendChild(tr);
             });
