@@ -182,6 +182,10 @@
             margin-bottom: 10px;
         }
     </style>
+
+    <!-- FIREBASE SCRIPTS -->
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
 
@@ -322,15 +326,65 @@
     </div>
 
     <script>
-        // Constants & Initial Data
-        let PRODUCTS = JSON.parse(localStorage.getItem('asset_products')) || Array.from({length: 9}, (_, i) => `Product ${i + 1}`);
-        let inventory = JSON.parse(localStorage.getItem('asset_inventory')) || {};
-        let assignments = JSON.parse(localStorage.getItem('asset_assignments')) || [];
+        // ==========================================
+        // 1. FIREBASE CONFIGURATION
+        // ==========================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyCA4fc19l4ZWFNn82RXJZdkar0yX1PslVk",
+            authDomain: "inventory-tracker-a2a8e.firebaseapp.com",
+            databaseURL: "https://inventory-tracker-a2a8e-default-rtdb.firebaseio.com",
+            projectId: "inventory-tracker-a2a8e",
+            storageBucket: "inventory-tracker-a2a8e.firebasestorage.app",
+            messagingSenderId: "223209852536",
+            appId: "1:223209852536:web:c2f58d9c284988547d278d"
+        };
 
-        PRODUCTS.forEach(p => {
-            if (inventory[p] === undefined) inventory[p] = 0;
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // Variables
+        let PRODUCTS = Array.from({length: 9}, (_, i) => `Product ${i + 1}`);
+        let inventory = {};
+        let assignments = [];
+
+        // ==========================================
+        // 2. REAL-TIME CLOUD SYNC
+        // ==========================================
+        db.collection("tracker").doc("trackerData").onSnapshot((doc) => {
+            if (doc.exists) {
+                const data = doc.data();
+                PRODUCTS = data.PRODUCTS || PRODUCTS;
+                inventory = data.inventory || {};
+                assignments = data.assignments || [];
+            } else {
+                PRODUCTS.forEach(p => {
+                    if (inventory[p] === undefined) inventory[p] = 0;
+                });
+            }
+            
+            // Re-render UI when data updates from the cloud
+            populateDropdowns();
+            renderProductNames();
+            if (document.getElementById('assign-serial-container').innerHTML === '') {
+                generateSerialInputs(); 
+            }
+            updateDashboard();
+            renderAdminTables();
         });
 
+        function saveData() {
+            // Push changes to Firebase Firestore
+            db.collection("tracker").doc("trackerData").set({
+                PRODUCTS: PRODUCTS,
+                inventory: inventory,
+                assignments: assignments
+            });
+        }
+
+        // ==========================================
+        // 3. APPLICATION LOGIC
+        // ==========================================
         function init() {
             populateDropdowns();
             renderProductNames();
@@ -359,6 +413,7 @@
             const dropdowns = ['dash-product', 'admin-inv-product', 'admin-assign-product'];
             dropdowns.forEach(id => {
                 const select = document.getElementById(id);
+                if (!select) return;
                 const currentValue = select.value; 
                 
                 select.innerHTML = '';
@@ -373,7 +428,6 @@
             });
         }
 
-        // --- DASHBOARD LOGIC ---
         function updateDashboard() {
             const selectedProduct = document.getElementById('dash-product').value;
             const groupBy = document.getElementById('dash-group').value;
@@ -390,13 +444,9 @@
             const tbody = document.getElementById('dash-table-body');
             tbody.innerHTML = '';
             
-            // Strictly filter so it ONLY shows the selected product
             let filteredAssignments = assignments.filter(a => a.product === selectedProduct);
-
-            // Sort by Date (newest first)
             let sortedAssignments = [...filteredAssignments].sort((a, b) => (b.timestamp || parseInt(b.id)) - (a.timestamp || parseInt(a.id)));
 
-            // Apply Grouping
             if (groupBy !== 'none') {
                 sortedAssignments.sort((a, b) => {
                     let valA = (a[groupBy] || '').toString().toLowerCase();
@@ -409,7 +459,6 @@
 
             let currentGroup = null;
             sortedAssignments.forEach(a => {
-                // Render Group Headers
                 if (groupBy !== 'none') {
                     let itemGroup = a[groupBy] || 'Unknown';
                     if (itemGroup !== currentGroup) {
@@ -424,9 +473,8 @@
                 const tr = document.createElement('tr');
                 const displayDate = a.dateTimeStr || new Date(parseInt(a.id)).toLocaleString();
                 
-                // Construct multiple serials HTML
                 let currentSerials = a.serials || [];
-                if(!a.serials && a.serial) currentSerials = [a.serial]; // Support for older data
+                if(!a.serials && a.serial) currentSerials = [a.serial]; 
                 
                 let serialHTML = '';
                 for(let i=0; i < a.qty; i++) {
@@ -446,9 +494,9 @@
             });
         }
 
-        // --- ADMIN LOGIC ---
         function renderProductNames() {
             const container = document.getElementById('admin-product-names-list');
+            if(!container) return;
             container.innerHTML = '';
             PRODUCTS.forEach((p, index) => {
                 const div = document.createElement('div');
@@ -510,12 +558,8 @@
                 });
                 
                 PRODUCTS = newNames;
-                localStorage.setItem('asset_products', JSON.stringify(PRODUCTS));
                 saveData();
                 
-                populateDropdowns();
-                updateDashboard();
-                renderAdminTables();
                 alert("Products updated successfully!");
             } else {
                 alert("No changes detected.");
@@ -530,24 +574,22 @@
 
             inventory[product] = qty;
             saveData();
-            renderAdminTables();
             alert(`${product} updated to ${qty}`);
             document.getElementById('admin-inv-qty').value = '';
         }
 
-        // Dynamically create serial number inputs based on quantity
         function generateSerialInputs() {
             const qty = parseInt(document.getElementById('admin-qty').value) || 1;
             const container = document.getElementById('assign-serial-container');
+            if(!container) return;
             
-            // Save current typed values so they don't wipe out if user changes Qty
             const currentVals = [];
             container.querySelectorAll('input').forEach(input => currentVals.push(input.value));
             
             container.innerHTML = '';
             for(let i=0; i < qty; i++) {
                 const val = currentVals[i] || '';
-                container.innerHTML += `<input type="text" id="admin-serial-${i}" value="${val}" placeholder="Serial ${i+1} (Optional)" style="width: 200px;">`;
+                container.innerHTML += `<input type="text" id="admin-serial-${i}" value="${val}" placeholder="Serial ${i+1} (Optional)" style="width: 200px; margin-right:10px; margin-bottom:10px;">`;
             }
         }
 
@@ -558,7 +600,6 @@
             const customer = document.getElementById('admin-customer').value;
             const qty = parseInt(document.getElementById('admin-qty').value);
 
-            // Collect all dynamic serial numbers
             const serials = [];
             for(let i=0; i < qty; i++) {
                 const sInput = document.getElementById(`admin-serial-${i}`);
@@ -580,10 +621,7 @@
 
             assignments.push(newAssignment);
             saveData();
-            renderAdminTables();
-            updateDashboard();
             
-            // Reset form but remember selected product
             document.getElementById('assign-form').reset();
             productSelect.value = product;
             generateSerialInputs(); 
@@ -597,7 +635,6 @@
                 if(!assignment.serials) assignment.serials = new Array(assignment.qty).fill('');
                 assignment.serials[index] = newSerial;
                 saveData();
-                updateDashboard(); 
             }
         }
 
@@ -605,13 +642,13 @@
             if(confirm("Are you sure you want to delete this assignment?")) {
                 assignments = assignments.filter(a => a.id !== id);
                 saveData();
-                renderAdminTables();
-                updateDashboard();
             }
         }
 
         function renderAdminTables() {
             const invBody = document.getElementById('admin-inv-table-body');
+            if(!invBody) return;
+            
             invBody.innerHTML = '';
             PRODUCTS.forEach(p => {
                 const tr = document.createElement('tr');
@@ -639,7 +676,6 @@
 
             let filteredAssignments = sortedAssignments.filter(a => {
                 const displayDate = a.dateTimeStr || new Date(parseInt(a.id)).toLocaleString();
-                // Check if any serial in the array matches search
                 const serialMatch = a.serials ? a.serials.some(s => s.toLowerCase().includes(filterText)) : (a.serial && a.serial.toLowerCase().includes(filterText));
                 return (
                     a.product.toLowerCase().includes(filterText) ||
@@ -652,7 +688,6 @@
 
             let currentGroup = null;
             filteredAssignments.forEach(a => {
-                // Grouping Headers
                 if (groupBy !== 'none') {
                     let itemGroup = a[groupBy] || 'Unknown';
                     if (itemGroup !== currentGroup) {
@@ -667,7 +702,6 @@
                 const tr = document.createElement('tr');
                 const displayDate = a.dateTimeStr || new Date(parseInt(a.id)).toLocaleString();
                 
-                // Admin Inline Serial Editing (Multiple)
                 let currentSerials = a.serials || [];
                 if(!a.serials && a.serial) currentSerials = [a.serial]; 
                 
@@ -692,12 +726,7 @@
             });
         }
 
-        function saveData() {
-            localStorage.setItem('asset_inventory', JSON.stringify(inventory));
-            localStorage.setItem('asset_assignments', JSON.stringify(assignments));
-        }
-
-        window.onload = init;
+        // Removed window.onload = init because Firebase onSnapshot handles initial data load
     </script>
 </body>
 </html>
