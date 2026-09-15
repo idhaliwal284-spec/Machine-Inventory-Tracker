@@ -349,21 +349,24 @@
         let assignments = [];
 
         // ==========================================
-        // 2. REAL-TIME CLOUD SYNC
+        // 2. REAL-TIME CLOUD SYNC & RECOVERY
         // ==========================================
         db.collection("tracker").doc("trackerData").onSnapshot((doc) => {
             if (doc.exists) {
+                // Cloud has data, use it!
                 const data = doc.data();
                 PRODUCTS = data.PRODUCTS || PRODUCTS;
                 inventory = data.inventory || {};
                 assignments = data.assignments || [];
             } else {
-                PRODUCTS.forEach(p => {
-                    if (inventory[p] === undefined) inventory[p] = 0;
-                });
+                // CLOUD IS EMPTY: Recover from your laptop's local storage and push it to Firebase
+                PRODUCTS = JSON.parse(localStorage.getItem('asset_products')) || PRODUCTS;
+                inventory = JSON.parse(localStorage.getItem('asset_inventory')) || {};
+                assignments = JSON.parse(localStorage.getItem('asset_assignments')) || [];
+                saveData(); // Sends this old data up to Firebase
             }
             
-            // Re-render UI when data updates from the cloud
+            // Re-render UI when data updates
             populateDropdowns();
             renderProductNames();
             if (document.getElementById('assign-serial-container').innerHTML === '') {
@@ -725,8 +728,6 @@
                 assignBody.appendChild(tr);
             });
         }
-
-        // Removed window.onload = init because Firebase onSnapshot handles initial data load
     </script>
 </body>
 </html>
