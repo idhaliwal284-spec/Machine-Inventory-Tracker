@@ -106,6 +106,22 @@
             border-radius: 4px;
             cursor: pointer;
         }
+        /* New styling for the expand/collapse button */
+        .toggle-btn {
+            background-color: #e2e6ea;
+            color: #333;
+            border: 1px solid #dae0e5;
+            padding: 5px 10px;
+            font-size: 12px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 5px;
+            display: inline-block;
+        }
+        .toggle-btn:hover {
+            background-color: #d3d9df;
+        }
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -355,6 +371,10 @@
         let PRODUCTS = Array.from({length: 9}, (_, i) => `Product ${i + 1}`);
         let inventory = {};
         let assignments = [];
+        
+        // Memory trackers for unfolded rows
+        let expandedAdminRows = new Set();
+        let expandedDashRows = new Set();
 
         // ==========================================
         // 2. REAL-TIME CLOUD SYNC & RECOVERY
@@ -434,6 +454,43 @@
                 if (PRODUCTS.includes(currentValue)) select.value = currentValue;
             });
         }
+        
+        // --- EXPAND/COLLAPSE LOGIC ---
+        function toggleDashDetails(id, qty) {
+            const sDiv = document.getElementById(`dash-details-serial-${id}`);
+            const soDiv = document.getElementById(`dash-details-so-${id}`);
+            const btn = document.getElementById(`dash-btn-toggle-${id}`);
+            
+            if (sDiv.style.display === 'none') {
+                sDiv.style.display = 'block';
+                if(soDiv) soDiv.style.display = 'block';
+                btn.innerHTML = `▲ Hide Details`;
+                expandedDashRows.add(id);
+            } else {
+                sDiv.style.display = 'none';
+                if(soDiv) soDiv.style.display = 'none';
+                btn.innerHTML = `▼ Show ${qty - 1} More`;
+                expandedDashRows.delete(id);
+            }
+        }
+
+        function toggleAdminDetails(id, qty) {
+            const sDiv = document.getElementById(`admin-details-serial-${id}`);
+            const soDiv = document.getElementById(`admin-details-so-${id}`);
+            const btn = document.getElementById(`admin-btn-toggle-${id}`);
+            
+            if (sDiv.style.display === 'none') {
+                sDiv.style.display = 'block';
+                if(soDiv) soDiv.style.display = 'block';
+                btn.innerHTML = `▲ Hide Details`;
+                expandedAdminRows.add(id);
+            } else {
+                sDiv.style.display = 'none';
+                if(soDiv) soDiv.style.display = 'none';
+                btn.innerHTML = `▼ Show ${qty - 1} More`;
+                expandedAdminRows.delete(id);
+            }
+        }
 
         function updateDashboard() {
             const selectedProduct = document.getElementById('dash-product').value;
@@ -488,12 +545,35 @@
                 
                 let serialHTML = '';
                 let soHTML = '';
-                for(let i=0; i < a.qty; i++) {
-                    let sVal = currentSerials[i] ? currentSerials[i] : '<span style="color:#888;">N/A</span>';
-                    serialHTML += `<div style="margin-bottom: 4px;">${sVal}</div>`;
+                let isExpanded = expandedDashRows.has(a.id);
+                let displayStyle = isExpanded ? 'block' : 'none';
+                let btnText = isExpanded ? '▲ Hide Details' : `▼ Show ${a.qty - 1} More`;
+
+                // Add the FIRST item
+                let sVal0 = currentSerials[0] ? currentSerials[0] : '<span style="color:#888;">N/A</span>';
+                serialHTML += `<div style="margin-bottom: 4px;">${sVal0}</div>`;
+                
+                let soVal0 = currentSOs[0] ? currentSOs[0] : '<span style="color:#888;">N/A</span>';
+                soHTML += `<div style="margin-bottom: 4px;">${soVal0}</div>`;
+                
+                // Add the rest hidden behind a collapse
+                if (a.qty > 1) {
+                    serialHTML += `<div id="dash-details-serial-${a.id}" style="display: ${displayStyle};">`;
+                    soHTML += `<div id="dash-details-so-${a.id}" style="display: ${displayStyle};">`;
                     
-                    let soVal = currentSOs[i] ? currentSOs[i] : '<span style="color:#888;">N/A</span>';
-                    soHTML += `<div style="margin-bottom: 4px;">${soVal}</div>`;
+                    for(let i=1; i < a.qty; i++) {
+                        let sVal = currentSerials[i] ? currentSerials[i] : '<span style="color:#888;">N/A</span>';
+                        serialHTML += `<div style="margin-bottom: 4px; color: #555;">${sVal}</div>`;
+                        
+                        let soVal = currentSOs[i] ? currentSOs[i] : '<span style="color:#888;">N/A</span>';
+                        soHTML += `<div style="margin-bottom: 4px; color: #555;">${soVal}</div>`;
+                    }
+                    
+                    serialHTML += `</div>`;
+                    soHTML += `</div>`;
+                    
+                    // Add Toggle Button
+                    serialHTML += `<button id="dash-btn-toggle-${a.id}" class="toggle-btn" onclick="toggleDashDetails('${a.id}', ${a.qty})">${btnText}</button>`;
                 }
                 
                 tr.innerHTML = `
@@ -680,12 +760,11 @@
             }
         }
 
-        // NEW: Function to dynamically change the quantity of an existing order
         function updateQuantity(id, newQty) {
             newQty = parseInt(newQty);
             if (isNaN(newQty) || newQty < 1) {
                 alert("Quantity must be at least 1.");
-                renderAdminTables(); // Reset to current valid data
+                renderAdminTables(); 
                 return;
             }
             
@@ -694,7 +773,6 @@
                 const oldQty = assignment.qty;
                 assignment.qty = newQty;
                 
-                // Adjust serials array to match new quantity
                 if(!assignment.serials) assignment.serials = new Array(oldQty).fill('');
                 if (newQty > oldQty) {
                     const diff = newQty - oldQty;
@@ -703,14 +781,12 @@
                     assignment.serials = assignment.serials.slice(0, newQty);
                 }
                 
-                // Adjust SO array to match new quantity
                 if(!assignment.sos) {
                     assignment.sos = new Array(oldQty).fill('');
                     if(assignment.so) assignment.sos.fill(assignment.so);
                 }
                 if (newQty > oldQty) {
                     const diff = newQty - oldQty;
-                    // Automatically copy the first Sales Order to the new rows to save typing
                     const defaultSO = assignment.sos[0] || '';
                     assignment.sos.push(...new Array(diff).fill(defaultSO));
                 } else {
@@ -795,19 +871,41 @@
                 
                 let serialHTML = '';
                 let soHTML = '';
-                for(let i=0; i < a.qty; i++) {
-                    let sVal = currentSerials[i] || '';
-                    serialHTML += `<input type="text" class="inline-input" style="margin-bottom:4px; display:block;" value="${sVal}" 
-                                   onchange="updateSerialNumber('${a.id}', ${i}, this.value)" 
-                                   placeholder="Add Serial ${i+1}...">`;
-                                   
-                    let soVal = currentSOs[i] || '';
-                    soHTML += `<input type="text" class="inline-input" style="margin-bottom:4px; display:block;" value="${soVal}" 
-                                   onchange="updateSalesOrder('${a.id}', ${i}, this.value)" 
-                                   placeholder="Add SO ${i+1}...">`;
+                let isExpanded = expandedAdminRows.has(a.id);
+                let displayStyle = isExpanded ? 'block' : 'none';
+                let btnText = isExpanded ? '▲ Hide Details' : `▼ Show ${a.qty - 1} More`;
+
+                // First Item
+                let sVal0 = currentSerials[0] || '';
+                serialHTML += `<input type="text" class="inline-input" style="margin-bottom:4px; display:block;" value="${sVal0}" 
+                               onchange="updateSerialNumber('${a.id}', 0, this.value)" placeholder="Add Serial 1...">`;
+                               
+                let soVal0 = currentSOs[0] || '';
+                soHTML += `<input type="text" class="inline-input" style="margin-bottom:4px; display:block;" value="${soVal0}" 
+                               onchange="updateSalesOrder('${a.id}', 0, this.value)" placeholder="Add SO 1...">`;
+
+                // Collapsible items
+                if (a.qty > 1) {
+                    serialHTML += `<div id="admin-details-serial-${a.id}" style="display: ${displayStyle};">`;
+                    soHTML += `<div id="admin-details-so-${a.id}" style="display: ${displayStyle};">`;
+                    
+                    for(let i=1; i < a.qty; i++) {
+                        let sVal = currentSerials[i] || '';
+                        serialHTML += `<input type="text" class="inline-input" style="margin-bottom:4px; display:block;" value="${sVal}" 
+                                       onchange="updateSerialNumber('${a.id}', ${i}, this.value)" placeholder="Add Serial ${i+1}...">`;
+                                       
+                        let soVal = currentSOs[i] || '';
+                        soHTML += `<input type="text" class="inline-input" style="margin-bottom:4px; display:block;" value="${soVal}" 
+                                       onchange="updateSalesOrder('${a.id}', ${i}, this.value)" placeholder="Add SO ${i+1}...">`;
+                    }
+                    
+                    serialHTML += `</div>`;
+                    soHTML += `</div>`;
+                    
+                    // Add Toggle Button
+                    serialHTML += `<button id="admin-btn-toggle-${a.id}" class="toggle-btn" onclick="toggleAdminDetails('${a.id}', ${a.qty})">${btnText}</button>`;
                 }
 
-                // Notice the newly editable quantity input field!
                 tr.innerHTML = `
                     <td><small style="color: #555;">${displayDate}</small></td>
                     <td>${a.product}</td>
