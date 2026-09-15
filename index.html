@@ -116,7 +116,6 @@
         button.done-btn:hover {
             background-color: #218838;
         }
-        /* Style specifically for square icon buttons */
         .icon-btn {
             width: 32px;
             height: 32px;
@@ -412,7 +411,7 @@
         let PRODUCTS = Array.from({length: 9}, (_, i) => `Product ${i + 1}`);
         let inventory = {};
         let assignments = [];
-        let completedAssignments = []; // New array to archive completed orders
+        let completedAssignments = []; 
         
         // Memory trackers for unfolded rows
         let expandedAdminRows = new Set();
@@ -629,7 +628,7 @@
                     serialHTML += `</div>`;
                     soHTML += `</div>`;
                     
-                    btnHTML = `<button id="dash-btn-toggle-${a.id}" class="toggle-btn" style="white-space: nowrap;" onclick="toggleDashDetails('${a.id}', ${a.qty})">${btnText}</button>`;
+                    btnHTML = `<button id="dash-btn-toggle-${a.id}" class="toggle-btn" style="width: 100%; white-space: nowrap;" onclick="toggleDashDetails('${a.id}', ${a.qty})">${btnText}</button>`;
                 }
                 
                 let highlightStyle = globalSearch ? 'background-color: #fff9e6;' : '';
@@ -908,30 +907,84 @@
             }
         }
 
+        // --- PARTIAL COMPLETION & DELETION LOGIC ---
         function completeAssignment(id) {
-            if(confirm("Mark this order as Done? This will officially deduct the quantity from your On Hand inventory and move the record to History.")) {
-                const assignmentIndex = assignments.findIndex(a => a.id === id);
-                if (assignmentIndex > -1) {
-                    const assignment = assignments[assignmentIndex];
-                    
-                    const currentQty = inventory[assignment.product] || 0;
-                    inventory[assignment.product] = Math.max(0, currentQty - assignment.qty);
-                    
-                    assignment.completedAtStr = new Date().toLocaleString();
-                    completedAssignments.push(assignment);
-                    
-                    assignments.splice(assignmentIndex, 1);
-                    
-                    saveData();
+            const assignmentIndex = assignments.findIndex(a => a.id === id);
+            if (assignmentIndex === -1) return;
+            const assignment = assignments[assignmentIndex];
+            
+            let qtyToProcess = assignment.qty;
+
+            if (assignment.qty > 1) {
+                const input = prompt(`This order has ${assignment.qty} units.\nHow many units do you want to mark as DONE?\n\n(Note: This will process starting from the top row)`, assignment.qty);
+                if (input === null) return; 
+                qtyToProcess = parseInt(input);
+                
+                if (isNaN(qtyToProcess) || qtyToProcess < 1 || qtyToProcess > assignment.qty) {
+                    alert("Invalid quantity entered.");
+                    return;
                 }
+            } else {
+                if(!confirm("Mark this order as Done? This will deduct the quantity from your On Hand inventory and move it to History.")) return;
             }
+            
+            // Deduct from on-hand inventory
+            const currentQty = inventory[assignment.product] || 0;
+            inventory[assignment.product] = Math.max(0, currentQty - qtyToProcess);
+            
+            // Stamp completion date and move to history archive
+            const completedRecord = JSON.parse(JSON.stringify(assignment)); // Deep copy
+            completedRecord.qty = qtyToProcess;
+            completedRecord.serials = assignment.serials ? assignment.serials.slice(0, qtyToProcess) : [];
+            completedRecord.sos = assignment.sos ? assignment.sos.slice(0, qtyToProcess) : [];
+            completedRecord.completedAtStr = new Date().toLocaleString();
+            completedAssignments.push(completedRecord);
+            
+            // Adjust the active order list
+            if (qtyToProcess === assignment.qty) {
+                assignments.splice(assignmentIndex, 1);
+            } else {
+                assignment.qty -= qtyToProcess;
+                if (assignment.serials) assignment.serials = assignment.serials.slice(qtyToProcess);
+                if (assignment.sos) assignment.sos = assignment.sos.slice(qtyToProcess);
+            }
+            
+            saveData();
+            renderAdminTables();
+            updateDashboard();
         }
 
         function deleteAssignment(id) {
-            if(confirm("Are you sure you want to completely delete this assignment without affecting inventory?")) {
-                assignments = assignments.filter(a => a.id !== id);
-                saveData();
+            const assignmentIndex = assignments.findIndex(a => a.id === id);
+            if (assignmentIndex === -1) return;
+            const assignment = assignments[assignmentIndex];
+            
+            let qtyToProcess = assignment.qty;
+
+            if (assignment.qty > 1) {
+                const input = prompt(`This order has ${assignment.qty} units.\nHow many units do you want to DELETE without affecting inventory?\n\n(Note: This will delete starting from the top row)`, assignment.qty);
+                if (input === null) return; 
+                qtyToProcess = parseInt(input);
+                
+                if (isNaN(qtyToProcess) || qtyToProcess < 1 || qtyToProcess > assignment.qty) {
+                    alert("Invalid quantity entered.");
+                    return;
+                }
+            } else {
+                if(!confirm("Are you sure you want to completely delete this assignment without affecting inventory?")) return;
             }
+
+            if (qtyToProcess === assignment.qty) {
+                assignments.splice(assignmentIndex, 1);
+            } else {
+                assignment.qty -= qtyToProcess;
+                if (assignment.serials) assignment.serials = assignment.serials.slice(qtyToProcess);
+                if (assignment.sos) assignment.sos = assignment.sos.slice(qtyToProcess);
+            }
+            
+            saveData();
+            renderAdminTables();
+            updateDashboard();
         }
 
         function renderAdminTables() {
