@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Signifi Solutions INC. - Asset Tracker</title>
+    <style>
+        :root {
+            --primary: #0056b3;
+            --secondary: #f4f6f9;
+            --text-dark: #333;
+            --border: #ccc;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #eef2f5;
+            color: var(--text-dark);
+        }
+        .header {
+            background-color: var(--primary);
+            color: white;
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .nav-buttons button {
+            background-color: white;
+            color: var(--primary);
+            border: none;
+            padding: 10px 20px;
+            margin-left: 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .nav-buttons button:hover {
+            background-color: #ddd;
+        }
+        .container {
+            padding: 30px;
+            max-width: 1200px;
+            margin: auto;
+        }
+        .tab-content {
+            display: none;
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .control-group {
+            margin-bottom: 25px;
+        }
+        select, input {
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        button.action-btn {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button.action-btn:hover {
+            background-color: #004494;
+        }
+        button.delete-btn {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        /* Dashboard Big Numbers */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background-color: var(--secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+        }
+        .stat-card h3 {
+            margin: 0 0 10px 0;
+            font-size: 18px;
+            color: #666;
+        }
+        .stat-card .number {
+            font-size: 48px;
+            font-weight: bold;
+            color: var(--primary);
+        }
+        .stat-card .number.forecast {
+            color: #28a745; /* Green for forecast */
+        }
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        th, td {
+            border: 1px solid var(--border);
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: var(--secondary);
+        }
+        .admin-section {
+            border: 1px solid var(--border);
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+        }
+        .name-slot {
+            display: inline-block;
+            margin-right: 15px;
+            margin-bottom: 10px;
+        }
+        .name-slot label {
+            display: block;
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 4px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Signifi Solutions INC. - Asset Tracker</h1>
+        <div class="nav-buttons">
+            <button onclick="switchTab('dashboard')">Dashboard</button>
+            <button onclick="openAdmin()">Admin</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- DASHBOARD TAB -->
+        <div id="dashboard" class="tab-content active">
+            <h2>Dashboard Overview</h2>
+            <div class="control-group">
+                <label for="dash-product" style="font-weight: bold; font-size: 18px; margin-right: 10px;">Select Product:</label>
+                <select id="dash-product" onchange="updateDashboard()">
+                    <!-- Options populated by JS -->
+                </select>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3>Total Qty on Hand</h3>
+                    <div class="number" id="dash-qty-on-hand">0</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Qty Assigned</h3>
+                    <div class="number" id="dash-qty-assigned">0</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Forecast (Available)</h3>
+                    <div class="number forecast" id="dash-qty-forecast">0</div>
+                </div>
+            </div>
+
+            <h3>Assigned Units List</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Serial Number</th>
+                        <th>Sales Order (SO)</th>
+                        <th>Customer</th>
+                        <th>Qty</th>
+                    </tr>
+                </thead>
+                <tbody id="dash-table-body">
+                    <!-- Data populates here -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- ADMIN TAB -->
+        <div id="admin" class="tab-content">
+            <h2>Admin Control Panel</h2>
+            
+            <div class="admin-section">
+                <h3>1. Manage Product Names</h3>
+                <div id="admin-product-names-list">
+                    <!-- Name inputs populated by JS -->
+                </div>
+                <button class="action-btn" onclick="saveProductNames()">Save Custom Names</button>
+            </div>
+
+            <div class="admin-section">
+                <h3>2. Manage Inventory (Qty on Hand)</h3>
+                <select id="admin-inv-product"></select>
+                <input type="number" id="admin-inv-qty" placeholder="Set Total Qty" min="0">
+                <button class="action-btn" onclick="updateInventory()">Update Qty</button>
+                <br><br>
+                <table style="width: 50%;">
+                    <thead>
+                        <tr>
+                            <th>Product</th>
+                            <th>Current Total Qty on Hand</th>
+                        </tr>
+                    </thead>
+                    <tbody id="admin-inv-table-body">
+                        <!-- Data populates here -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="admin-section">
+                <h3>3. Assign Order</h3>
+                <form id="assign-form" onsubmit="event.preventDefault(); assignOrder();">
+                    <select id="admin-assign-product" required></select>
+                    <input type="text" id="admin-serial" placeholder="Serial Number" required>
+                    <input type="text" id="admin-so" placeholder="Sales Order (SO)" required>
+                    <input type="text" id="admin-customer" placeholder="Customer Name" required>
+                    <input type="number" id="admin-qty" placeholder="Quantity" min="1" required>
+                    <button type="submit" class="action-btn">Assign Unit</button>
+                </form>
+            </div>
+
+            <div class="admin-section">
+                <h3>4. Manage Assignments</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Product</th>
+                            <th>Serial Number</th>
+                            <th>Sales Order</th>
+                            <th>Customer</th>
+                            <th>Qty</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="admin-assignments-table-body">
+                        <!-- Data populates here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Constants & Initial Data
+        let PRODUCTS = JSON.parse(localStorage.getItem('asset_products')) || Array.from({length: 9}, (_, i) => `Product ${i + 1}`);
+        let inventory = JSON.parse(localStorage.getItem('asset_inventory')) || {};
+        let assignments = JSON.parse(localStorage.getItem('asset_assignments')) || [];
+
+        // Initialize inventory with 0 if not present
+        PRODUCTS.forEach(p => {
+            if (inventory[p] === undefined) inventory[p] = 0;
+        });
+
+        // Initialize App
+        function init() {
+            populateDropdowns();
+            renderProductNames();
+            updateDashboard();
+            renderAdminTables();
+        }
+
+        // Tab Switching Logic
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            if (tabId === 'dashboard') {
+                updateDashboard();
+            }
+        }
+
+        function openAdmin() {
+            const pwd = prompt("Enter Admin Password:");
+            if (pwd === "12345") {
+                switchTab('admin');
+                renderAdminTables();
+            } else if (pwd !== null) {
+                alert("Incorrect Password!");
+            }
+        }
+
+        // Populate Select Dropdowns
+        function populateDropdowns() {
+            const dropdowns = ['dash-product', 'admin-inv-product', 'admin-assign-product'];
+            dropdowns.forEach(id => {
+                const select = document.getElementById(id);
+                const currentValue = select.value; // Remember selection if re-rendering
+                
+                select.innerHTML = '';
+                PRODUCTS.forEach(p => {
+                    const opt = document.createElement('option');
+                    opt.value = p;
+                    opt.textContent = p;
+                    select.appendChild(opt);
+                });
+
+                if (PRODUCTS.includes(currentValue)) {
+                    select.value = currentValue;
+                }
+            });
+        }
+
+        // --- DASHBOARD LOGIC ---
+        function updateDashboard() {
+            const selectedProduct = document.getElementById('dash-product').value;
+            
+            // Calculate Stats
+            const qtyOnHand = inventory[selectedProduct] || 0;
+            const productAssignments = assignments.filter(a => a.product === selectedProduct);
+            const qtyAssigned = productAssignments.reduce((sum, a) => sum + parseInt(a.qty), 0);
+            const forecast = qtyOnHand - qtyAssigned;
+
+            // Update Big Numbers
+            document.getElementById('dash-qty-on-hand').innerText = qtyOnHand;
+            document.getElementById('dash-qty-assigned').innerText = qtyAssigned;
+            document.getElementById('dash-qty-forecast').innerText = forecast;
+
+            // Update Dashboard Table
+            const tbody = document.getElementById('dash-table-body');
+            tbody.innerHTML = '';
+            
+            assignments.forEach(a => {
+                const tr = document.createElement('tr');
+                if(a.product === selectedProduct) {
+                    tr.style.backgroundColor = "#e8f4ff"; // Highlight selected product
+                }
+                tr.innerHTML = `
+                    <td>${a.product}</td>
+                    <td>${a.serial}</td>
+                    <td>${a.so}</td>
+                    <td>${a.customer}</td>
+                    <td>${a.qty}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // --- ADMIN LOGIC ---
+        
+        function renderProductNames() {
+            const container = document.getElementById('admin-product-names-list');
+            container.innerHTML = '';
+            PRODUCTS.forEach((p, index) => {
+                const div = document.createElement('div');
+                div.className = 'name-slot';
+                div.innerHTML = `
+                    <label>Slot ${index + 1}</label>
+                    <input type="text" id="prod-name-${index}" value="${p}">
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function saveProductNames() {
+            let newNames = [];
+            let changed = false;
+            let changes = [];
+            
+            // Gather all new names and detect changes
+            for (let i = 0; i < 9; i++) {
+                let newName = document.getElementById(`prod-name-${i}`).value.trim();
+                if (!newName) newName = `Product ${i + 1}`; // Fallback if left blank
+                
+                newNames.push(newName);
+                
+                if (newName !== PRODUCTS[i]) {
+                    changes.push({ old: PRODUCTS[i], new: newName });
+                    changed = true;
+                }
+            }
+            
+            if (changed) {
+                // Update Inventory Keys
+                changes.forEach(c => {
+                    if (inventory[c.old] !== undefined) {
+                        inventory[c.new] = inventory[c.old];
+                        delete inventory[c.old];
+                    } else {
+                        inventory[c.new] = 0;
+                    }
+                });
+                
+                // Update Assignments
+                assignments.forEach(a => {
+                    let change = changes.find(c => c.old === a.product);
+                    if (change) {
+                        a.product = change.new;
+                    }
+                });
+                
+                // Save new array
+                PRODUCTS = newNames;
+                localStorage.setItem('asset_products', JSON.stringify(PRODUCTS));
+                saveData();
+                
+                // Re-render UI
+                populateDropdowns();
+                updateDashboard();
+                renderAdminTables();
+                alert("Product names updated successfully!");
+            } else {
+                alert("No changes detected.");
+            }
+        }
+
+        function updateInventory() {
+            const product = document.getElementById('admin-inv-product').value;
+            const qty = parseInt(document.getElementById('admin-inv-qty').value);
+            
+            if (isNaN(qty) || qty < 0) {
+                alert("Please enter a valid quantity.");
+                return;
+            }
+
+            inventory[product] = qty;
+            saveData();
+            renderAdminTables();
+            alert(`${product} total quantity on hand updated to ${qty}`);
+            document.getElementById('admin-inv-qty').value = '';
+        }
+
+        function assignOrder() {
+            const product = document.getElementById('admin-assign-product').value;
+            const serial = document.getElementById('admin-serial').value;
+            const so = document.getElementById('admin-so').value;
+            const customer = document.getElementById('admin-customer').value;
+            const qty = parseInt(document.getElementById('admin-qty').value);
+
+            // Create assignment record
+            const newAssignment = {
+                id: Date.now().toString(), // Unique ID for deletion
+                product,
+                serial,
+                so,
+                customer,
+                qty
+            };
+
+            assignments.push(newAssignment);
+            saveData();
+            renderAdminTables();
+            
+            // Clear form
+            document.getElementById('assign-form').reset();
+            alert("Order Assigned Successfully!");
+        }
+
+        function deleteAssignment(id) {
+            if(confirm("Are you sure you want to delete this assignment?")) {
+                assignments = assignments.filter(a => a.id !== id);
+                saveData();
+                renderAdminTables();
+                updateDashboard();
+            }
+        }
+
+        function renderAdminTables() {
+            // Render Inventory Table
+            const invBody = document.getElementById('admin-inv-table-body');
+            invBody.innerHTML = '';
+            PRODUCTS.forEach(p => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${p}</td>
+                    <td><strong>${inventory[p]}</strong></td>
+                `;
+                invBody.appendChild(tr);
+            });
+
+            // Render Assignments Table
+            const assignBody = document.getElementById('admin-assignments-table-body');
+            assignBody.innerHTML = '';
+            assignments.forEach(a => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${a.product}</td>
+                    <td>${a.serial}</td>
+                    <td>${a.so}</td>
+                    <td>${a.customer}</td>
+                    <td>${a.qty}</td>
+                    <td><button class="delete-btn" onclick="deleteAssignment('${a.id}')">Delete</button></td>
+                `;
+                assignBody.appendChild(tr);
+            });
+        }
+
+        function saveData() {
+            localStorage.setItem('asset_inventory', JSON.stringify(inventory));
+            localStorage.setItem('asset_assignments', JSON.stringify(assignments));
+        }
+
+        // Run on load
+        window.onload = init;
+    </script>
+</body>
+</html>
