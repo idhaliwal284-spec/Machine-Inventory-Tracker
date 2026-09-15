@@ -456,7 +456,6 @@
 
             if (groupBy !== 'none') {
                 sortedAssignments.sort((a, b) => {
-                    // If grouped by SO, use the first SO in the array for sorting
                     let valA = groupBy === 'so' ? ((a.sos && a.sos[0]) || a.so || '').toString().toLowerCase() : (a[groupBy] || '').toString().toLowerCase();
                     let valB = groupBy === 'so' ? ((b.sos && b.sos[0]) || b.so || '').toString().toLowerCase() : (b[groupBy] || '').toString().toLowerCase();
                     if (valA < valB) return -1;
@@ -481,7 +480,6 @@
                 const tr = document.createElement('tr');
                 const displayDate = a.dateTimeStr || new Date(parseInt(a.id)).toLocaleString();
                 
-                // Construct Serial & SO HTML blocks
                 let currentSerials = a.serials || [];
                 if(!a.serials && a.serial) currentSerials = [a.serial]; 
                 
@@ -593,7 +591,6 @@
             document.getElementById('admin-inv-qty').value = '';
         }
 
-        // Generates BOTH Serial and SO inputs dynamically based on Qty
         function generateDynamicInputs() {
             const qty = parseInt(document.getElementById('admin-qty').value) || 1;
             const container = document.getElementById('assign-dynamic-container');
@@ -602,7 +599,6 @@
             const currentSerials = [];
             const currentSOs = [];
             
-            // Save whatever the user already typed so it doesn't vanish if they change qty
             for(let i=0; i < container.children.length; i++) {
                 const sInput = document.getElementById(`admin-serial-${i}`);
                 if(sInput) currentSerials[i] = sInput.value;
@@ -646,7 +642,7 @@
                 id: Date.now().toString(),
                 product,
                 serials, 
-                sos, // Store array of Sales Orders
+                sos, 
                 customer,
                 qty,
                 timestamp: dateObj.getTime(),
@@ -675,12 +671,52 @@
         function updateSalesOrder(id, index, newSO) {
             const assignment = assignments.find(a => a.id === id);
             if (assignment) {
-                // If it is an older record, initialize the array first
                 if(!assignment.sos) {
                     assignment.sos = new Array(assignment.qty).fill('');
                     if(assignment.so) assignment.sos.fill(assignment.so);
                 }
                 assignment.sos[index] = newSO;
+                saveData();
+            }
+        }
+
+        // NEW: Function to dynamically change the quantity of an existing order
+        function updateQuantity(id, newQty) {
+            newQty = parseInt(newQty);
+            if (isNaN(newQty) || newQty < 1) {
+                alert("Quantity must be at least 1.");
+                renderAdminTables(); // Reset to current valid data
+                return;
+            }
+            
+            const assignment = assignments.find(a => a.id === id);
+            if (assignment) {
+                const oldQty = assignment.qty;
+                assignment.qty = newQty;
+                
+                // Adjust serials array to match new quantity
+                if(!assignment.serials) assignment.serials = new Array(oldQty).fill('');
+                if (newQty > oldQty) {
+                    const diff = newQty - oldQty;
+                    assignment.serials.push(...new Array(diff).fill(''));
+                } else {
+                    assignment.serials = assignment.serials.slice(0, newQty);
+                }
+                
+                // Adjust SO array to match new quantity
+                if(!assignment.sos) {
+                    assignment.sos = new Array(oldQty).fill('');
+                    if(assignment.so) assignment.sos.fill(assignment.so);
+                }
+                if (newQty > oldQty) {
+                    const diff = newQty - oldQty;
+                    // Automatically copy the first Sales Order to the new rows to save typing
+                    const defaultSO = assignment.sos[0] || '';
+                    assignment.sos.push(...new Array(diff).fill(defaultSO));
+                } else {
+                    assignment.sos = assignment.sos.slice(0, newQty);
+                }
+                
                 saveData();
             }
         }
@@ -771,13 +807,17 @@
                                    placeholder="Add SO ${i+1}...">`;
                 }
 
+                // Notice the newly editable quantity input field!
                 tr.innerHTML = `
                     <td><small style="color: #555;">${displayDate}</small></td>
                     <td>${a.product}</td>
                     <td>${serialHTML}</td>
                     <td>${soHTML}</td>
                     <td>${a.customer}</td>
-                    <td>${a.qty}</td>
+                    <td>
+                        <input type="number" class="inline-input" style="width: 60px;" value="${a.qty}" 
+                               onchange="updateQuantity('${a.id}', this.value)" min="1">
+                    </td>
                     <td><button class="delete-btn" onclick="deleteAssignment('${a.id}')">Delete</button></td>
                 `;
                 assignBody.appendChild(tr);
