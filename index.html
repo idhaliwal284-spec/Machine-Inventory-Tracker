@@ -181,6 +181,15 @@
             border-radius: 6px;
             margin-bottom: 10px;
         }
+        .dynamic-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .dynamic-row input {
+            margin: 0;
+            width: 220px;
+        }
     </style>
 
     <!-- FIREBASE SCRIPTS -->
@@ -284,12 +293,11 @@
                 <h3>3. Assign Order</h3>
                 <form id="assign-form" onsubmit="event.preventDefault(); assignOrder();">
                     <select id="admin-assign-product" required></select>
-                    <input type="text" id="admin-so" placeholder="Sales Order (SO)" required>
                     <input type="text" id="admin-customer" placeholder="Customer Name" required>
-                    <input type="number" id="admin-qty" placeholder="Quantity" min="1" value="1" required oninput="generateSerialInputs()">
+                    <input type="number" id="admin-qty" placeholder="Quantity" min="1" value="1" required oninput="generateDynamicInputs()">
                     
-                    <!-- Dynamic Serial Inputs render here -->
-                    <div id="assign-serial-container" style="margin-top: 10px; display: flex; flex-wrap: wrap;"></div>
+                    <!-- Dynamic Serial & SO Inputs render here -->
+                    <div id="assign-dynamic-container" style="margin-top: 15px; display: flex; flex-direction: column;"></div>
                     
                     <button type="submit" class="action-btn" style="margin-top: 10px; display: block;">Assign Unit</button>
                 </form>
@@ -312,7 +320,7 @@
                             <th>Date / Time</th>
                             <th>Product</th>
                             <th>Serial Number(s)</th>
-                            <th>Sales Order</th>
+                            <th>Sales Order(s)</th>
                             <th>Customer</th>
                             <th>Qty</th>
                             <th>Action</th>
@@ -353,31 +361,27 @@
         // ==========================================
         db.collection("tracker").doc("trackerData").onSnapshot((doc) => {
             if (doc.exists) {
-                // Cloud has data, use it!
                 const data = doc.data();
                 PRODUCTS = data.PRODUCTS || PRODUCTS;
                 inventory = data.inventory || {};
                 assignments = data.assignments || [];
             } else {
-                // CLOUD IS EMPTY: Recover from your laptop's local storage and push it to Firebase
                 PRODUCTS = JSON.parse(localStorage.getItem('asset_products')) || PRODUCTS;
                 inventory = JSON.parse(localStorage.getItem('asset_inventory')) || {};
                 assignments = JSON.parse(localStorage.getItem('asset_assignments')) || [];
-                saveData(); // Sends this old data up to Firebase
+                saveData(); 
             }
             
-            // Re-render UI when data updates
             populateDropdowns();
             renderProductNames();
-            if (document.getElementById('assign-serial-container').innerHTML === '') {
-                generateSerialInputs(); 
+            if (document.getElementById('assign-dynamic-container').innerHTML === '') {
+                generateDynamicInputs(); 
             }
             updateDashboard();
             renderAdminTables();
         });
 
         function saveData() {
-            // Push changes to Firebase Firestore
             db.collection("tracker").doc("trackerData").set({
                 PRODUCTS: PRODUCTS,
                 inventory: inventory,
@@ -391,7 +395,7 @@
         function init() {
             populateDropdowns();
             renderProductNames();
-            generateSerialInputs(); 
+            generateDynamicInputs(); 
             updateDashboard();
             renderAdminTables();
         }
@@ -452,8 +456,9 @@
 
             if (groupBy !== 'none') {
                 sortedAssignments.sort((a, b) => {
-                    let valA = (a[groupBy] || '').toString().toLowerCase();
-                    let valB = (b[groupBy] || '').toString().toLowerCase();
+                    // If grouped by SO, use the first SO in the array for sorting
+                    let valA = groupBy === 'so' ? ((a.sos && a.sos[0]) || a.so || '').toString().toLowerCase() : (a[groupBy] || '').toString().toLowerCase();
+                    let valB = groupBy === 'so' ? ((b.sos && b.sos[0]) || b.so || '').toString().toLowerCase() : (b[groupBy] || '').toString().toLowerCase();
                     if (valA < valB) return -1;
                     if (valA > valB) return 1;
                     return (b.timestamp || parseInt(b.id)) - (a.timestamp || parseInt(a.id));
@@ -463,7 +468,7 @@
             let currentGroup = null;
             sortedAssignments.forEach(a => {
                 if (groupBy !== 'none') {
-                    let itemGroup = a[groupBy] || 'Unknown';
+                    let itemGroup = groupBy === 'so' ? ((a.sos && a.sos[0]) || a.so || 'Unknown') : (a[groupBy] || 'Unknown');
                     if (itemGroup !== currentGroup) {
                         currentGroup = itemGroup;
                         const groupTr = document.createElement('tr');
@@ -476,20 +481,28 @@
                 const tr = document.createElement('tr');
                 const displayDate = a.dateTimeStr || new Date(parseInt(a.id)).toLocaleString();
                 
+                // Construct Serial & SO HTML blocks
                 let currentSerials = a.serials || [];
                 if(!a.serials && a.serial) currentSerials = [a.serial]; 
                 
+                let currentSOs = a.sos || [];
+                if(!a.sos && a.so) currentSOs = Array(a.qty).fill(a.so); 
+                
                 let serialHTML = '';
+                let soHTML = '';
                 for(let i=0; i < a.qty; i++) {
                     let sVal = currentSerials[i] ? currentSerials[i] : '<span style="color:#888;">N/A</span>';
                     serialHTML += `<div style="margin-bottom: 4px;">${sVal}</div>`;
+                    
+                    let soVal = currentSOs[i] ? currentSOs[i] : '<span style="color:#888;">N/A</span>';
+                    soHTML += `<div style="margin-bottom: 4px;">${soVal}</div>`;
                 }
                 
                 tr.innerHTML = `
                     <td><small style="color: #555;">${displayDate}</small></td>
                     <td>${a.product}</td>
                     <td>${serialHTML}</td>
-                    <td>${a.so}</td>
+                    <td>${soHTML}</td>
                     <td>${a.customer}</td>
                     <td>${a.qty}</td>
                 `;
@@ -562,7 +575,6 @@
                 
                 PRODUCTS = newNames;
                 saveData();
-                
                 alert("Products updated successfully!");
             } else {
                 alert("No changes detected.");
@@ -581,32 +593,51 @@
             document.getElementById('admin-inv-qty').value = '';
         }
 
-        function generateSerialInputs() {
+        // Generates BOTH Serial and SO inputs dynamically based on Qty
+        function generateDynamicInputs() {
             const qty = parseInt(document.getElementById('admin-qty').value) || 1;
-            const container = document.getElementById('assign-serial-container');
+            const container = document.getElementById('assign-dynamic-container');
             if(!container) return;
             
-            const currentVals = [];
-            container.querySelectorAll('input').forEach(input => currentVals.push(input.value));
+            const currentSerials = [];
+            const currentSOs = [];
+            
+            // Save whatever the user already typed so it doesn't vanish if they change qty
+            for(let i=0; i < container.children.length; i++) {
+                const sInput = document.getElementById(`admin-serial-${i}`);
+                if(sInput) currentSerials[i] = sInput.value;
+                const soInput = document.getElementById(`admin-so-${i}`);
+                if(soInput) currentSOs[i] = soInput.value;
+            }
             
             container.innerHTML = '';
             for(let i=0; i < qty; i++) {
-                const val = currentVals[i] || '';
-                container.innerHTML += `<input type="text" id="admin-serial-${i}" value="${val}" placeholder="Serial ${i+1} (Optional)" style="width: 200px; margin-right:10px; margin-bottom:10px;">`;
+                const sVal = currentSerials[i] || '';
+                const soVal = currentSOs[i] || '';
+                
+                container.innerHTML += `
+                    <div class="dynamic-row">
+                        <input type="text" id="admin-serial-${i}" value="${sVal}" placeholder="Serial ${i+1} (Optional)">
+                        <input type="text" id="admin-so-${i}" value="${soVal}" placeholder="Sales Order ${i+1} (Optional)">
+                    </div>
+                `;
             }
         }
 
         function assignOrder() {
             const productSelect = document.getElementById('admin-assign-product');
             const product = productSelect.value;
-            const so = document.getElementById('admin-so').value;
             const customer = document.getElementById('admin-customer').value;
             const qty = parseInt(document.getElementById('admin-qty').value);
 
             const serials = [];
+            const sos = [];
             for(let i=0; i < qty; i++) {
                 const sInput = document.getElementById(`admin-serial-${i}`);
                 serials.push(sInput ? sInput.value : '');
+                
+                const soInput = document.getElementById(`admin-so-${i}`);
+                sos.push(soInput ? soInput.value : '');
             }
 
             const dateObj = new Date();
@@ -615,7 +646,7 @@
                 id: Date.now().toString(),
                 product,
                 serials, 
-                so,
+                sos, // Store array of Sales Orders
                 customer,
                 qty,
                 timestamp: dateObj.getTime(),
@@ -627,7 +658,7 @@
             
             document.getElementById('assign-form').reset();
             productSelect.value = product;
-            generateSerialInputs(); 
+            generateDynamicInputs(); 
             
             alert("Order Assigned Successfully!");
         }
@@ -637,6 +668,19 @@
             if (assignment) {
                 if(!assignment.serials) assignment.serials = new Array(assignment.qty).fill('');
                 assignment.serials[index] = newSerial;
+                saveData();
+            }
+        }
+
+        function updateSalesOrder(id, index, newSO) {
+            const assignment = assignments.find(a => a.id === id);
+            if (assignment) {
+                // If it is an older record, initialize the array first
+                if(!assignment.sos) {
+                    assignment.sos = new Array(assignment.qty).fill('');
+                    if(assignment.so) assignment.sos.fill(assignment.so);
+                }
+                assignment.sos[index] = newSO;
                 saveData();
             }
         }
@@ -669,8 +713,8 @@
             
             if (groupBy !== 'none') {
                 sortedAssignments.sort((a, b) => {
-                    let valA = (a[groupBy] || '').toString().toLowerCase();
-                    let valB = (b[groupBy] || '').toString().toLowerCase();
+                    let valA = groupBy === 'so' ? ((a.sos && a.sos[0]) || a.so || '').toString().toLowerCase() : (a[groupBy] || '').toString().toLowerCase();
+                    let valB = groupBy === 'so' ? ((b.sos && b.sos[0]) || b.so || '').toString().toLowerCase() : (b[groupBy] || '').toString().toLowerCase();
                     if (valA < valB) return -1;
                     if (valA > valB) return 1;
                     return (b.timestamp || parseInt(b.id)) - (a.timestamp || parseInt(a.id));
@@ -680,10 +724,12 @@
             let filteredAssignments = sortedAssignments.filter(a => {
                 const displayDate = a.dateTimeStr || new Date(parseInt(a.id)).toLocaleString();
                 const serialMatch = a.serials ? a.serials.some(s => s.toLowerCase().includes(filterText)) : (a.serial && a.serial.toLowerCase().includes(filterText));
+                const soMatch = a.sos ? a.sos.some(s => s.toLowerCase().includes(filterText)) : (a.so && a.so.toLowerCase().includes(filterText));
+                
                 return (
                     a.product.toLowerCase().includes(filterText) ||
                     serialMatch ||
-                    a.so.toLowerCase().includes(filterText) ||
+                    soMatch ||
                     a.customer.toLowerCase().includes(filterText) ||
                     displayDate.toLowerCase().includes(filterText)
                 );
@@ -692,7 +738,7 @@
             let currentGroup = null;
             filteredAssignments.forEach(a => {
                 if (groupBy !== 'none') {
-                    let itemGroup = a[groupBy] || 'Unknown';
+                    let itemGroup = groupBy === 'so' ? ((a.sos && a.sos[0]) || a.so || 'Unknown') : (a[groupBy] || 'Unknown');
                     if (itemGroup !== currentGroup) {
                         currentGroup = itemGroup;
                         const groupTr = document.createElement('tr');
@@ -708,19 +754,28 @@
                 let currentSerials = a.serials || [];
                 if(!a.serials && a.serial) currentSerials = [a.serial]; 
                 
+                let currentSOs = a.sos || [];
+                if(!a.sos && a.so) currentSOs = Array(a.qty).fill(a.so); 
+                
                 let serialHTML = '';
+                let soHTML = '';
                 for(let i=0; i < a.qty; i++) {
                     let sVal = currentSerials[i] || '';
                     serialHTML += `<input type="text" class="inline-input" style="margin-bottom:4px; display:block;" value="${sVal}" 
                                    onchange="updateSerialNumber('${a.id}', ${i}, this.value)" 
                                    placeholder="Add Serial ${i+1}...">`;
+                                   
+                    let soVal = currentSOs[i] || '';
+                    soHTML += `<input type="text" class="inline-input" style="margin-bottom:4px; display:block;" value="${soVal}" 
+                                   onchange="updateSalesOrder('${a.id}', ${i}, this.value)" 
+                                   placeholder="Add SO ${i+1}...">`;
                 }
 
                 tr.innerHTML = `
                     <td><small style="color: #555;">${displayDate}</small></td>
                     <td>${a.product}</td>
                     <td>${serialHTML}</td>
-                    <td>${a.so}</td>
+                    <td>${soHTML}</td>
                     <td>${a.customer}</td>
                     <td>${a.qty}</td>
                     <td><button class="delete-btn" onclick="deleteAssignment('${a.id}')">Delete</button></td>
