@@ -61,8 +61,9 @@
         .control-group {
             margin-bottom: 25px;
             display: flex;
+            flex-wrap: wrap;
             gap: 20px;
-            align-items: center;
+            align-items: flex-end;
         }
         select, input {
             padding: 10px;
@@ -155,7 +156,7 @@
             border: 1px solid var(--border);
             padding: 12px;
             text-align: left;
-            vertical-align: middle;
+            vertical-align: top;
         }
         th {
             background-color: var(--secondary);
@@ -188,7 +189,6 @@
         }
         .search-bar {
             width: 100%;
-            max-width: 400px;
             padding: 10px;
             font-size: 16px;
             border: 2px solid var(--primary);
@@ -224,6 +224,14 @@
         <!-- DASHBOARD TAB -->
         <div id="dashboard" class="tab-content active">
             <h2>Dashboard Overview</h2>
+            
+            <!-- Global Search Override -->
+            <div style="margin-bottom: 25px; padding-bottom: 20px; border-bottom: 2px solid #ccc;">
+                <label for="dash-global-search" style="font-weight: bold; font-size: 18px; display:block; color: var(--primary);">Global Search (All Products):</label>
+                <input type="text" id="dash-global-search" class="search-bar" style="max-width: 800px; margin-bottom: 0;" placeholder="🔍 Search any Customer or Sales Order across all machines..." onkeyup="updateDashboard()">
+                <small style="display: block; color: #666; margin-top: 5px;">Typing here will override the product selection below and show all matches.</small>
+            </div>
+
             <div class="control-group">
                 <div>
                     <label for="dash-product" style="font-weight: bold; font-size: 16px; display:block;">Select Product:</label>
@@ -244,14 +252,17 @@
                 <div class="stat-card">
                     <h3>Total Qty on Hand</h3>
                     <div class="number" id="dash-qty-on-hand">0</div>
+                    <small style="color:#666;">For selected product</small>
                 </div>
                 <div class="stat-card">
                     <h3>Qty Assigned</h3>
                     <div class="number" id="dash-qty-assigned">0</div>
+                    <small style="color:#666;">For selected product</small>
                 </div>
                 <div class="stat-card">
                     <h3>Forecast (Available)</h3>
                     <div class="number forecast" id="dash-qty-forecast">0</div>
+                    <small style="color:#666;">For selected product</small>
                 </div>
             </div>
 
@@ -280,14 +291,26 @@
             <div class="admin-section">
                 <h3>1. Assign Order</h3>
                 <form id="assign-form" onsubmit="event.preventDefault(); assignOrder();">
-                    <select id="admin-assign-product" required></select>
-                    <input type="text" id="admin-customer" placeholder="Customer Name" required>
-                    <input type="number" id="admin-qty" placeholder="Quantity" min="1" value="1" required oninput="generateDynamicInputs()">
+                    <div style="display: flex; gap: 10px; margin-bottom: 10px; align-items: center;">
+                        <select id="admin-assign-product" style="margin-bottom:0;" required></select>
+                        <input type="text" id="admin-customer" placeholder="Customer Name" style="margin-bottom:0;" required>
+                        <input type="number" id="admin-qty" placeholder="Quantity" min="1" value="1" style="width: 100px; margin-bottom:0;" required oninput="generateDynamicInputs()">
+                    </div>
+                    
+                    <!-- NEW SAME SALES ORDER TOGGLE -->
+                    <div style="margin: 15px 0 10px 0; background-color: #f4f6f9; padding: 10px; border-radius: 4px; border: 1px solid #ccc; display: inline-block;">
+                        <label style="font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                            <input type="checkbox" id="admin-same-so" checked onchange="generateDynamicInputs()" style="margin:0; width: 18px; height: 18px;"> 
+                            Apply the SAME Sales Order to all units in this batch
+                        </label>
+                    </div>
+                    
+                    <input type="text" id="admin-master-so" placeholder="Sales Order (Optional)" style="display: block; width: 300px;">
                     
                     <!-- Dynamic Serial & SO Inputs render here -->
                     <div id="assign-dynamic-container" style="margin-top: 15px; display: flex; flex-direction: column;"></div>
                     
-                    <button type="submit" class="action-btn" style="margin-top: 10px; display: block;">Assign Unit</button>
+                    <button type="submit" class="action-btn" style="margin-top: 15px; display: block; width: 200px;">Assign Unit(s)</button>
                 </form>
             </div>
 
@@ -321,7 +344,7 @@
             <div class="admin-section">
                 <h3>4. Manage Assignments</h3>
                 <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px;">
-                    <input type="text" id="admin-filter" class="search-bar" style="margin:0;" placeholder="🔍 Search Date, Product, SO, or Customer..." onkeyup="renderAdminTables()">
+                    <input type="text" id="admin-filter" class="search-bar" style="margin:0; max-width: 400px;" placeholder="🔍 Search Date, Product, SO, or Customer..." onkeyup="renderAdminTables()">
                     <select id="admin-group" class="search-bar" style="margin:0; width:auto;" onchange="renderAdminTables()">
                         <option value="none">Group By: None (Newest First)</option>
                         <option value="product">Group By: Product</option>
@@ -494,7 +517,9 @@
         function updateDashboard() {
             const selectedProduct = document.getElementById('dash-product').value;
             const groupBy = document.getElementById('dash-group').value;
+            const globalSearch = (document.getElementById('dash-global-search')?.value || '').toLowerCase();
             
+            // Stats ALWAYS reflect the selected product dropdown to prevent confusion
             const qtyOnHand = inventory[selectedProduct] || 0;
             const productAssignments = assignments.filter(a => a.product === selectedProduct);
             const qtyAssigned = productAssignments.reduce((sum, a) => sum + parseInt(a.qty), 0);
@@ -507,7 +532,20 @@
             const tbody = document.getElementById('dash-table-body');
             tbody.innerHTML = '';
             
-            let filteredAssignments = assignments.filter(a => a.product === selectedProduct);
+            let filteredAssignments = [];
+            
+            // Check if user is using the Global Search
+            if (globalSearch) {
+                filteredAssignments = assignments.filter(a => {
+                    const soMatch = a.sos ? a.sos.some(s => s.toLowerCase().includes(globalSearch)) : (a.so && a.so.toLowerCase().includes(globalSearch));
+                    const custMatch = a.customer.toLowerCase().includes(globalSearch);
+                    return soMatch || custMatch;
+                });
+            } else {
+                // Normal view based on product dropdown
+                filteredAssignments = assignments.filter(a => a.product === selectedProduct);
+            }
+
             let sortedAssignments = [...filteredAssignments].sort((a, b) => (b.timestamp || parseInt(b.id)) - (a.timestamp || parseInt(a.id)));
 
             if (groupBy !== 'none') {
@@ -577,14 +615,17 @@
                     btnHTML = `<button id="dash-btn-toggle-${a.id}" class="toggle-btn" style="width: 100%; white-space: nowrap;" onclick="toggleDashDetails('${a.id}', ${a.qty})">${btnText}</button>`;
                 }
                 
+                // Highlight row if searching globally
+                let highlightStyle = globalSearch ? 'background-color: #fff9e6;' : '';
+
                 tr.innerHTML = `
-                    <td><small style="color: #555;">${displayDate}</small></td>
-                    <td>${a.product}</td>
-                    <td>${serialHTML}</td>
-                    <td>${soHTML}</td>
-                    <td>${a.customer}</td>
-                    <td>${a.qty}</td>
-                    <td style="min-width: 120px;">${btnHTML}</td>
+                    <td style="${highlightStyle}"><small style="color: #555;">${displayDate}</small></td>
+                    <td style="${highlightStyle} font-weight: ${globalSearch ? 'bold' : 'normal'};">${a.product}</td>
+                    <td style="${highlightStyle}">${serialHTML}</td>
+                    <td style="${highlightStyle}">${soHTML}</td>
+                    <td style="${highlightStyle}">${a.customer}</td>
+                    <td style="${highlightStyle}">${a.qty}</td>
+                    <td style="${highlightStyle} min-width: 120px;">${btnHTML}</td>
                 `;
                 tbody.appendChild(tr);
             });
@@ -661,7 +702,6 @@
             }
         }
 
-        // --- NEW LIVE INVENTORY MATH FUNCTIONS ---
         function calcNewTotal(index, currentQty) {
             const addInput = document.getElementById(`add-qty-${index}`);
             const addVal = parseInt(addInput.value) || 0;
@@ -706,7 +746,17 @@
         function generateDynamicInputs() {
             const qty = parseInt(document.getElementById('admin-qty').value) || 1;
             const container = document.getElementById('assign-dynamic-container');
+            const sameSoCheckbox = document.getElementById('admin-same-so');
+            const masterSoInput = document.getElementById('admin-master-so');
             if(!container) return;
+            
+            const isSameSo = sameSoCheckbox.checked;
+
+            if (isSameSo) {
+                masterSoInput.style.display = 'block';
+            } else {
+                masterSoInput.style.display = 'none';
+            }
             
             const currentSerials = [];
             const currentSOs = [];
@@ -721,14 +771,19 @@
             container.innerHTML = '';
             for(let i=0; i < qty; i++) {
                 const sVal = currentSerials[i] || '';
-                const soVal = currentSOs[i] || '';
                 
-                container.innerHTML += `
+                let rowHTML = `
                     <div class="dynamic-row">
-                        <input type="text" id="admin-serial-${i}" value="${sVal}" placeholder="Serial ${i+1} (Optional)">
-                        <input type="text" id="admin-so-${i}" value="${soVal}" placeholder="Sales Order ${i+1} (Optional)">
-                    </div>
-                `;
+                        <input type="text" id="admin-serial-${i}" value="${sVal}" placeholder="Serial ${i+1} (Optional)">`;
+                
+                // Only render individual SO inputs if the checkbox is unchecked
+                if (!isSameSo) {
+                    const soVal = currentSOs[i] || '';
+                    rowHTML += `<input type="text" id="admin-so-${i}" value="${soVal}" placeholder="Sales Order ${i+1} (Optional)">`;
+                }
+                
+                rowHTML += `</div>`;
+                container.innerHTML += rowHTML;
             }
         }
 
@@ -737,15 +792,23 @@
             const product = productSelect.value;
             const customer = document.getElementById('admin-customer').value;
             const qty = parseInt(document.getElementById('admin-qty').value);
+            
+            const isSameSo = document.getElementById('admin-same-so').checked;
+            const masterSo = document.getElementById('admin-master-so').value;
 
             const serials = [];
             const sos = [];
+            
             for(let i=0; i < qty; i++) {
                 const sInput = document.getElementById(`admin-serial-${i}`);
                 serials.push(sInput ? sInput.value : '');
                 
-                const soInput = document.getElementById(`admin-so-${i}`);
-                sos.push(soInput ? soInput.value : '');
+                if (isSameSo) {
+                    sos.push(masterSo);
+                } else {
+                    const soInput = document.getElementById(`admin-so-${i}`);
+                    sos.push(soInput ? soInput.value : '');
+                }
             }
 
             const dateObj = new Date();
@@ -764,7 +827,9 @@
             assignments.push(newAssignment);
             saveData();
             
+            // Reset logic
             document.getElementById('assign-form').reset();
+            document.getElementById('admin-same-so').checked = true; // Reset checkbox to default
             productSelect.value = product;
             generateDynamicInputs(); 
             
