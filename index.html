@@ -60,6 +60,9 @@
         }
         .control-group {
             margin-bottom: 25px;
+            display: flex;
+            gap: 20px;
+            align-items: center;
         }
         select, input {
             padding: 10px;
@@ -138,6 +141,7 @@
             border: 1px solid var(--border);
             padding: 12px;
             text-align: left;
+            vertical-align: top;
         }
         th {
             background-color: var(--secondary);
@@ -194,9 +198,19 @@
         <div id="dashboard" class="tab-content active">
             <h2>Dashboard Overview</h2>
             <div class="control-group">
-                <label for="dash-product" style="font-weight: bold; font-size: 18px; margin-right: 10px;">Select Product:</label>
-                <select id="dash-product" onchange="updateDashboard()">
-                </select>
+                <div>
+                    <label for="dash-product" style="font-weight: bold; font-size: 16px; display:block;">Select Product:</label>
+                    <select id="dash-product" onchange="updateDashboard()">
+                    </select>
+                </div>
+                <div>
+                    <label for="dash-group" style="font-weight: bold; font-size: 16px; display:block;">Group Records By:</label>
+                    <select id="dash-group" onchange="updateDashboard()">
+                        <option value="none">None (Newest First)</option>
+                        <option value="customer">Customer</option>
+                        <option value="so">Sales Order (SO)</option>
+                    </select>
+                </div>
             </div>
 
             <div class="stats-grid">
@@ -214,13 +228,13 @@
                 </div>
             </div>
 
-            <h3>Assigned Units List (Newest First)</h3>
+            <h3>Assigned Units List</h3>
             <table>
                 <thead>
                     <tr>
                         <th>Date / Time</th>
                         <th>Product</th>
-                        <th>Serial Number</th>
+                        <th>Serial Number(s)</th>
                         <th>Sales Order (SO)</th>
                         <th>Customer</th>
                         <th>Qty</th>
@@ -266,23 +280,34 @@
                 <h3>3. Assign Order</h3>
                 <form id="assign-form" onsubmit="event.preventDefault(); assignOrder();">
                     <select id="admin-assign-product" required></select>
-                    <input type="text" id="admin-serial" placeholder="Serial Number (Optional)">
                     <input type="text" id="admin-so" placeholder="Sales Order (SO)" required>
                     <input type="text" id="admin-customer" placeholder="Customer Name" required>
-                    <input type="number" id="admin-qty" placeholder="Quantity" min="1" required>
-                    <button type="submit" class="action-btn">Assign Unit</button>
+                    <input type="number" id="admin-qty" placeholder="Quantity" min="1" value="1" required oninput="generateSerialInputs()">
+                    
+                    <!-- Dynamic Serial Inputs render here -->
+                    <div id="assign-serial-container" style="margin-top: 10px; display: flex; flex-wrap: wrap;"></div>
+                    
+                    <button type="submit" class="action-btn" style="margin-top: 10px; display: block;">Assign Unit</button>
                 </form>
             </div>
 
             <div class="admin-section">
                 <h3>4. Manage Assignments</h3>
-                <input type="text" id="admin-filter" class="search-bar" placeholder="🔍 Search Date, Product, SO, or Customer..." onkeyup="renderAdminTables()">
+                <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px;">
+                    <input type="text" id="admin-filter" class="search-bar" style="margin:0;" placeholder="🔍 Search Date, Product, SO, or Customer..." onkeyup="renderAdminTables()">
+                    <select id="admin-group" class="search-bar" style="margin:0; width:auto;" onchange="renderAdminTables()">
+                        <option value="none">Group By: None (Newest First)</option>
+                        <option value="product">Group By: Product</option>
+                        <option value="customer">Group By: Customer</option>
+                        <option value="so">Group By: Sales Order (SO)</option>
+                    </select>
+                </div>
                 <table>
                     <thead>
                         <tr>
                             <th>Date / Time</th>
                             <th>Product</th>
-                            <th>Serial Number</th>
+                            <th>Serial Number(s)</th>
                             <th>Sales Order</th>
                             <th>Customer</th>
                             <th>Qty</th>
@@ -309,6 +334,7 @@
         function init() {
             populateDropdowns();
             renderProductNames();
+            generateSerialInputs(); 
             updateDashboard();
             renderAdminTables();
         }
@@ -350,6 +376,7 @@
         // --- DASHBOARD LOGIC ---
         function updateDashboard() {
             const selectedProduct = document.getElementById('dash-product').value;
+            const groupBy = document.getElementById('dash-group').value;
             
             const qtyOnHand = inventory[selectedProduct] || 0;
             const productAssignments = assignments.filter(a => a.product === selectedProduct);
@@ -363,19 +390,54 @@
             const tbody = document.getElementById('dash-table-body');
             tbody.innerHTML = '';
             
-            // Sort by Date (newest first)
-            let sortedAssignments = [...assignments].sort((a, b) => (b.timestamp || parseInt(b.id)) - (a.timestamp || parseInt(a.id)));
+            // Strictly filter so it ONLY shows the selected product
+            let filteredAssignments = assignments.filter(a => a.product === selectedProduct);
 
+            // Sort by Date (newest first)
+            let sortedAssignments = [...filteredAssignments].sort((a, b) => (b.timestamp || parseInt(b.id)) - (a.timestamp || parseInt(a.id)));
+
+            // Apply Grouping
+            if (groupBy !== 'none') {
+                sortedAssignments.sort((a, b) => {
+                    let valA = (a[groupBy] || '').toString().toLowerCase();
+                    let valB = (b[groupBy] || '').toString().toLowerCase();
+                    if (valA < valB) return -1;
+                    if (valA > valB) return 1;
+                    return (b.timestamp || parseInt(b.id)) - (a.timestamp || parseInt(a.id));
+                });
+            }
+
+            let currentGroup = null;
             sortedAssignments.forEach(a => {
+                // Render Group Headers
+                if (groupBy !== 'none') {
+                    let itemGroup = a[groupBy] || 'Unknown';
+                    if (itemGroup !== currentGroup) {
+                        currentGroup = itemGroup;
+                        const groupTr = document.createElement('tr');
+                        let groupName = groupBy === 'customer' ? 'Customer' : 'Sales Order (SO)';
+                        groupTr.innerHTML = `<td colspan="6" style="background-color: #d1ecf1; font-weight: bold; color: #0c5460;">${groupName}: ${currentGroup}</td>`;
+                        tbody.appendChild(groupTr);
+                    }
+                }
+
                 const tr = document.createElement('tr');
-                if(a.product === selectedProduct) tr.style.backgroundColor = "#e8f4ff"; 
-                
                 const displayDate = a.dateTimeStr || new Date(parseInt(a.id)).toLocaleString();
+                
+                // Construct multiple serials HTML
+                let currentSerials = a.serials || [];
+                if(!a.serials && a.serial) currentSerials = [a.serial]; // Support for older data
+                
+                let serialHTML = '';
+                for(let i=0; i < a.qty; i++) {
+                    let sVal = currentSerials[i] ? currentSerials[i] : '<span style="color:#888;">N/A</span>';
+                    serialHTML += `<div style="margin-bottom: 4px;">${sVal}</div>`;
+                }
                 
                 tr.innerHTML = `
                     <td><small style="color: #555;">${displayDate}</small></td>
                     <td>${a.product}</td>
-                    <td>${a.serial ? a.serial : '<span style="color:#888;">N/A</span>'}</td>
+                    <td>${serialHTML}</td>
                     <td>${a.so}</td>
                     <td>${a.customer}</td>
                     <td>${a.qty}</td>
@@ -422,18 +484,15 @@
                 if (!newName) newName = `Product ${i + 1}`; 
                 newNames.push(newName);
                 
-                // Track changes to existing products
                 if (i < PRODUCTS.length && newName !== PRODUCTS[i]) {
                     changes.push({ old: PRODUCTS[i], new: newName });
                     changed = true;
                 }
             });
             
-            // Check if entirely new products were added
             if (newNames.length !== PRODUCTS.length) changed = true;
             
             if (changed) {
-                // Update Inventory Keys
                 changes.forEach(c => {
                     if (inventory[c.old] !== undefined) {
                         inventory[c.new] = inventory[c.old];
@@ -441,12 +500,10 @@
                     }
                 });
                 
-                // Initialize any newly added products to 0
                 newNames.forEach(n => {
                     if (inventory[n] === undefined) inventory[n] = 0;
                 });
                 
-                // Update Assignments
                 assignments.forEach(a => {
                     let change = changes.find(c => c.old === a.product);
                     if (change) a.product = change.new;
@@ -478,20 +535,42 @@
             document.getElementById('admin-inv-qty').value = '';
         }
 
+        // Dynamically create serial number inputs based on quantity
+        function generateSerialInputs() {
+            const qty = parseInt(document.getElementById('admin-qty').value) || 1;
+            const container = document.getElementById('assign-serial-container');
+            
+            // Save current typed values so they don't wipe out if user changes Qty
+            const currentVals = [];
+            container.querySelectorAll('input').forEach(input => currentVals.push(input.value));
+            
+            container.innerHTML = '';
+            for(let i=0; i < qty; i++) {
+                const val = currentVals[i] || '';
+                container.innerHTML += `<input type="text" id="admin-serial-${i}" value="${val}" placeholder="Serial ${i+1} (Optional)" style="width: 200px;">`;
+            }
+        }
+
         function assignOrder() {
             const productSelect = document.getElementById('admin-assign-product');
             const product = productSelect.value;
-            const serial = document.getElementById('admin-serial').value; 
             const so = document.getElementById('admin-so').value;
             const customer = document.getElementById('admin-customer').value;
             const qty = parseInt(document.getElementById('admin-qty').value);
+
+            // Collect all dynamic serial numbers
+            const serials = [];
+            for(let i=0; i < qty; i++) {
+                const sInput = document.getElementById(`admin-serial-${i}`);
+                serials.push(sInput ? sInput.value : '');
+            }
 
             const dateObj = new Date();
 
             const newAssignment = {
                 id: Date.now().toString(),
                 product,
-                serial,
+                serials, 
                 so,
                 customer,
                 qty,
@@ -504,17 +583,19 @@
             renderAdminTables();
             updateDashboard();
             
-            // Clear form BUT keep the selected product dropdown
+            // Reset form but remember selected product
             document.getElementById('assign-form').reset();
             productSelect.value = product;
+            generateSerialInputs(); 
             
             alert("Order Assigned Successfully!");
         }
 
-        function updateSerialNumber(id, newSerial) {
+        function updateSerialNumber(id, index, newSerial) {
             const assignment = assignments.find(a => a.id === id);
             if (assignment) {
-                assignment.serial = newSerial;
+                if(!assignment.serials) assignment.serials = new Array(assignment.qty).fill('');
+                assignment.serials[index] = newSerial;
                 saveData();
                 updateDashboard(); 
             }
@@ -541,35 +622,67 @@
             const assignBody = document.getElementById('admin-assignments-table-body');
             assignBody.innerHTML = '';
             
-            // 1. Get search filter text
             const filterText = (document.getElementById('admin-filter')?.value || '').toLowerCase();
+            const groupBy = document.getElementById('admin-group').value;
             
-            // 2. Sort by newest date
             let sortedAssignments = [...assignments].sort((a, b) => (b.timestamp || parseInt(b.id)) - (a.timestamp || parseInt(a.id)));
             
-            // 3. Filter results based on search box
+            if (groupBy !== 'none') {
+                sortedAssignments.sort((a, b) => {
+                    let valA = (a[groupBy] || '').toString().toLowerCase();
+                    let valB = (b[groupBy] || '').toString().toLowerCase();
+                    if (valA < valB) return -1;
+                    if (valA > valB) return 1;
+                    return (b.timestamp || parseInt(b.id)) - (a.timestamp || parseInt(a.id));
+                });
+            }
+
             let filteredAssignments = sortedAssignments.filter(a => {
                 const displayDate = a.dateTimeStr || new Date(parseInt(a.id)).toLocaleString();
+                // Check if any serial in the array matches search
+                const serialMatch = a.serials ? a.serials.some(s => s.toLowerCase().includes(filterText)) : (a.serial && a.serial.toLowerCase().includes(filterText));
                 return (
                     a.product.toLowerCase().includes(filterText) ||
-                    (a.serial && a.serial.toLowerCase().includes(filterText)) ||
+                    serialMatch ||
                     a.so.toLowerCase().includes(filterText) ||
                     a.customer.toLowerCase().includes(filterText) ||
                     displayDate.toLowerCase().includes(filterText)
                 );
             });
 
+            let currentGroup = null;
             filteredAssignments.forEach(a => {
-                const displayDate = a.dateTimeStr || new Date(parseInt(a.id)).toLocaleString();
+                // Grouping Headers
+                if (groupBy !== 'none') {
+                    let itemGroup = a[groupBy] || 'Unknown';
+                    if (itemGroup !== currentGroup) {
+                        currentGroup = itemGroup;
+                        const groupTr = document.createElement('tr');
+                        let groupName = groupBy === 'customer' ? 'Customer' : (groupBy === 'so' ? 'Sales Order (SO)' : 'Product');
+                        groupTr.innerHTML = `<td colspan="7" style="background-color: #d1ecf1; font-weight: bold; color: #0c5460;">${groupName}: ${currentGroup}</td>`;
+                        assignBody.appendChild(groupTr);
+                    }
+                }
+
                 const tr = document.createElement('tr');
+                const displayDate = a.dateTimeStr || new Date(parseInt(a.id)).toLocaleString();
+                
+                // Admin Inline Serial Editing (Multiple)
+                let currentSerials = a.serials || [];
+                if(!a.serials && a.serial) currentSerials = [a.serial]; 
+                
+                let serialHTML = '';
+                for(let i=0; i < a.qty; i++) {
+                    let sVal = currentSerials[i] || '';
+                    serialHTML += `<input type="text" class="inline-input" style="margin-bottom:4px; display:block;" value="${sVal}" 
+                                   onchange="updateSerialNumber('${a.id}', ${i}, this.value)" 
+                                   placeholder="Add Serial ${i+1}...">`;
+                }
+
                 tr.innerHTML = `
                     <td><small style="color: #555;">${displayDate}</small></td>
                     <td>${a.product}</td>
-                    <td>
-                        <input type="text" class="inline-input" value="${a.serial || ''}" 
-                               onchange="updateSerialNumber('${a.id}', this.value)" 
-                               placeholder="Add Serial...">
-                    </td>
+                    <td>${serialHTML}</td>
                     <td>${a.so}</td>
                     <td>${a.customer}</td>
                     <td>${a.qty}</td>
