@@ -81,6 +81,20 @@
         button.action-btn:hover {
             background-color: #004494;
         }
+        button.add-btn {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 14px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-bottom: 15px;
+            display: block;
+        }
+        button.add-btn:hover {
+            background-color: #218838;
+        }
         button.delete-btn {
             background-color: #dc3545;
             color: white;
@@ -89,7 +103,6 @@
             border-radius: 4px;
             cursor: pointer;
         }
-        /* Dashboard Big Numbers */
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -116,7 +129,6 @@
         .stat-card .number.forecast {
             color: #28a745; 
         }
-        /* Tables */
         table {
             width: 100%;
             border-collapse: collapse;
@@ -148,7 +160,6 @@
             margin-bottom: 4px;
             font-weight: bold;
         }
-        /* Inline Input Styling */
         .inline-input {
             padding: 6px;
             font-size: 14px;
@@ -157,10 +168,14 @@
             box-sizing: border-box;
             border: 1px solid #aaa;
         }
-        .inline-input:focus {
-            outline: none;
-            border-color: var(--primary);
-            box-shadow: 0 0 3px rgba(0,86,179,0.5);
+        .search-bar {
+            width: 100%;
+            max-width: 400px;
+            padding: 10px;
+            font-size: 16px;
+            border: 2px solid var(--primary);
+            border-radius: 6px;
+            margin-bottom: 10px;
         }
     </style>
 </head>
@@ -181,7 +196,6 @@
             <div class="control-group">
                 <label for="dash-product" style="font-weight: bold; font-size: 18px; margin-right: 10px;">Select Product:</label>
                 <select id="dash-product" onchange="updateDashboard()">
-                    <!-- Options populated by JS -->
                 </select>
             </div>
 
@@ -200,10 +214,11 @@
                 </div>
             </div>
 
-            <h3>Assigned Units List</h3>
+            <h3>Assigned Units List (Newest First)</h3>
             <table>
                 <thead>
                     <tr>
+                        <th>Date / Time</th>
                         <th>Product</th>
                         <th>Serial Number</th>
                         <th>Sales Order (SO)</th>
@@ -212,7 +227,6 @@
                     </tr>
                 </thead>
                 <tbody id="dash-table-body">
-                    <!-- Data populates here -->
                 </tbody>
             </table>
         </div>
@@ -224,8 +238,9 @@
             <div class="admin-section">
                 <h3>1. Manage Product Names</h3>
                 <div id="admin-product-names-list">
-                    <!-- Name inputs populated by JS -->
+                    <!-- Populated by JS -->
                 </div>
+                <button type="button" class="add-btn" onclick="addProductSlot()">+ Add Another Product</button>
                 <button class="action-btn" onclick="saveProductNames()">Save Custom Names</button>
             </div>
 
@@ -243,7 +258,6 @@
                         </tr>
                     </thead>
                     <tbody id="admin-inv-table-body">
-                        <!-- Data populates here -->
                     </tbody>
                 </table>
             </div>
@@ -252,7 +266,6 @@
                 <h3>3. Assign Order</h3>
                 <form id="assign-form" onsubmit="event.preventDefault(); assignOrder();">
                     <select id="admin-assign-product" required></select>
-                    <!-- REQUIRED ATTRIBUTE REMOVED BELOW -->
                     <input type="text" id="admin-serial" placeholder="Serial Number (Optional)">
                     <input type="text" id="admin-so" placeholder="Sales Order (SO)" required>
                     <input type="text" id="admin-customer" placeholder="Customer Name" required>
@@ -263,9 +276,11 @@
 
             <div class="admin-section">
                 <h3>4. Manage Assignments</h3>
+                <input type="text" id="admin-filter" class="search-bar" placeholder="🔍 Search Date, Product, SO, or Customer..." onkeyup="renderAdminTables()">
                 <table>
                     <thead>
                         <tr>
+                            <th>Date / Time</th>
                             <th>Product</th>
                             <th>Serial Number</th>
                             <th>Sales Order</th>
@@ -275,7 +290,6 @@
                         </tr>
                     </thead>
                     <tbody id="admin-assignments-table-body">
-                        <!-- Data populates here -->
                     </tbody>
                 </table>
             </div>
@@ -284,16 +298,14 @@
 
     <script>
         // Constants & Initial Data
-        let PRODUCTS = JSON.parse(localStorage.getItem('asset_products')) || Array.from({length: 20}, (_, i) => `Product ${i + 1}`);
+        let PRODUCTS = JSON.parse(localStorage.getItem('asset_products')) || Array.from({length: 9}, (_, i) => `Product ${i + 1}`);
         let inventory = JSON.parse(localStorage.getItem('asset_inventory')) || {};
         let assignments = JSON.parse(localStorage.getItem('asset_assignments')) || [];
 
-        // Initialize inventory with 0 if not present
         PRODUCTS.forEach(p => {
             if (inventory[p] === undefined) inventory[p] = 0;
         });
 
-        // Initialize App
         function init() {
             populateDropdowns();
             renderProductNames();
@@ -301,13 +313,10 @@
             renderAdminTables();
         }
 
-        // Tab Switching Logic
         function switchTab(tabId) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
             document.getElementById(tabId).classList.add('active');
-            if (tabId === 'dashboard') {
-                updateDashboard();
-            }
+            if (tabId === 'dashboard') updateDashboard();
         }
 
         function openAdmin() {
@@ -320,7 +329,6 @@
             }
         }
 
-        // Populate Select Dropdowns
         function populateDropdowns() {
             const dropdowns = ['dash-product', 'admin-inv-product', 'admin-assign-product'];
             dropdowns.forEach(id => {
@@ -335,9 +343,7 @@
                     select.appendChild(opt);
                 });
 
-                if (PRODUCTS.includes(currentValue)) {
-                    select.value = currentValue;
-                }
+                if (PRODUCTS.includes(currentValue)) select.value = currentValue;
             });
         }
 
@@ -345,27 +351,29 @@
         function updateDashboard() {
             const selectedProduct = document.getElementById('dash-product').value;
             
-            // Calculate Stats
             const qtyOnHand = inventory[selectedProduct] || 0;
             const productAssignments = assignments.filter(a => a.product === selectedProduct);
             const qtyAssigned = productAssignments.reduce((sum, a) => sum + parseInt(a.qty), 0);
             const forecast = qtyOnHand - qtyAssigned;
 
-            // Update Big Numbers
             document.getElementById('dash-qty-on-hand').innerText = qtyOnHand;
             document.getElementById('dash-qty-assigned').innerText = qtyAssigned;
             document.getElementById('dash-qty-forecast').innerText = forecast;
 
-            // Update Dashboard Table
             const tbody = document.getElementById('dash-table-body');
             tbody.innerHTML = '';
             
-            assignments.forEach(a => {
+            // Sort by Date (newest first)
+            let sortedAssignments = [...assignments].sort((a, b) => (b.timestamp || parseInt(b.id)) - (a.timestamp || parseInt(a.id)));
+
+            sortedAssignments.forEach(a => {
                 const tr = document.createElement('tr');
-                if(a.product === selectedProduct) {
-                    tr.style.backgroundColor = "#e8f4ff"; // Highlight selected product
-                }
+                if(a.product === selectedProduct) tr.style.backgroundColor = "#e8f4ff"; 
+                
+                const displayDate = a.dateTimeStr || new Date(parseInt(a.id)).toLocaleString();
+                
                 tr.innerHTML = `
+                    <td><small style="color: #555;">${displayDate}</small></td>
                     <td>${a.product}</td>
                     <td>${a.serial ? a.serial : '<span style="color:#888;">N/A</span>'}</td>
                     <td>${a.so}</td>
@@ -377,7 +385,6 @@
         }
 
         // --- ADMIN LOGIC ---
-        
         function renderProductNames() {
             const container = document.getElementById('admin-product-names-list');
             container.innerHTML = '';
@@ -386,10 +393,22 @@
                 div.className = 'name-slot';
                 div.innerHTML = `
                     <label>Slot ${index + 1}</label>
-                    <input type="text" id="prod-name-${index}" value="${p}">
+                    <input type="text" class="prod-name-input" value="${p}">
                 `;
                 container.appendChild(div);
             });
+        }
+
+        function addProductSlot() {
+            const container = document.getElementById('admin-product-names-list');
+            const index = container.children.length;
+            const div = document.createElement('div');
+            div.className = 'name-slot';
+            div.innerHTML = `
+                <label>Slot ${index + 1}</label>
+                <input type="text" class="prod-name-input" value="Product ${index + 1}">
+            `;
+            container.appendChild(div);
         }
 
         function saveProductNames() {
@@ -397,18 +416,21 @@
             let changed = false;
             let changes = [];
             
-            // Gather all new names and detect changes
-            for (let i = 0; i < 9; i++) {
-                let newName = document.getElementById(`prod-name-${i}`).value.trim();
+            const inputs = document.querySelectorAll('.prod-name-input');
+            inputs.forEach((input, i) => {
+                let newName = input.value.trim();
                 if (!newName) newName = `Product ${i + 1}`; 
-                
                 newNames.push(newName);
                 
-                if (newName !== PRODUCTS[i]) {
+                // Track changes to existing products
+                if (i < PRODUCTS.length && newName !== PRODUCTS[i]) {
                     changes.push({ old: PRODUCTS[i], new: newName });
                     changed = true;
                 }
-            }
+            });
+            
+            // Check if entirely new products were added
+            if (newNames.length !== PRODUCTS.length) changed = true;
             
             if (changed) {
                 // Update Inventory Keys
@@ -416,29 +438,28 @@
                     if (inventory[c.old] !== undefined) {
                         inventory[c.new] = inventory[c.old];
                         delete inventory[c.old];
-                    } else {
-                        inventory[c.new] = 0;
                     }
+                });
+                
+                // Initialize any newly added products to 0
+                newNames.forEach(n => {
+                    if (inventory[n] === undefined) inventory[n] = 0;
                 });
                 
                 // Update Assignments
                 assignments.forEach(a => {
                     let change = changes.find(c => c.old === a.product);
-                    if (change) {
-                        a.product = change.new;
-                    }
+                    if (change) a.product = change.new;
                 });
                 
-                // Save new array
                 PRODUCTS = newNames;
                 localStorage.setItem('asset_products', JSON.stringify(PRODUCTS));
                 saveData();
                 
-                // Re-render UI
                 populateDropdowns();
                 updateDashboard();
                 renderAdminTables();
-                alert("Product names updated successfully!");
+                alert("Products updated successfully!");
             } else {
                 alert("No changes detected.");
             }
@@ -448,52 +469,54 @@
             const product = document.getElementById('admin-inv-product').value;
             const qty = parseInt(document.getElementById('admin-inv-qty').value);
             
-            if (isNaN(qty) || qty < 0) {
-                alert("Please enter a valid quantity.");
-                return;
-            }
+            if (isNaN(qty) || qty < 0) return alert("Please enter a valid quantity.");
 
             inventory[product] = qty;
             saveData();
             renderAdminTables();
-            alert(`${product} total quantity on hand updated to ${qty}`);
+            alert(`${product} updated to ${qty}`);
             document.getElementById('admin-inv-qty').value = '';
         }
 
         function assignOrder() {
-            const product = document.getElementById('admin-assign-product').value;
-            const serial = document.getElementById('admin-serial').value; // Now allows empty string
+            const productSelect = document.getElementById('admin-assign-product');
+            const product = productSelect.value;
+            const serial = document.getElementById('admin-serial').value; 
             const so = document.getElementById('admin-so').value;
             const customer = document.getElementById('admin-customer').value;
             const qty = parseInt(document.getElementById('admin-qty').value);
 
-            // Create assignment record
+            const dateObj = new Date();
+
             const newAssignment = {
-                id: Date.now().toString(), // Unique ID for deletion
+                id: Date.now().toString(),
                 product,
                 serial,
                 so,
                 customer,
-                qty
+                qty,
+                timestamp: dateObj.getTime(),
+                dateTimeStr: dateObj.toLocaleString()
             };
 
             assignments.push(newAssignment);
             saveData();
             renderAdminTables();
+            updateDashboard();
             
-            // Clear form
+            // Clear form BUT keep the selected product dropdown
             document.getElementById('assign-form').reset();
+            productSelect.value = product;
+            
             alert("Order Assigned Successfully!");
         }
 
-        // NEW FUNCTION: Update serial number inline
         function updateSerialNumber(id, newSerial) {
             const assignment = assignments.find(a => a.id === id);
             if (assignment) {
                 assignment.serial = newSerial;
                 saveData();
                 updateDashboard(); 
-                // We don't re-render the admin table so you don't lose focus while typing
             }
         }
 
@@ -507,24 +530,40 @@
         }
 
         function renderAdminTables() {
-            // Render Inventory Table
             const invBody = document.getElementById('admin-inv-table-body');
             invBody.innerHTML = '';
             PRODUCTS.forEach(p => {
                 const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${p}</td>
-                    <td><strong>${inventory[p]}</strong></td>
-                `;
+                tr.innerHTML = `<td>${p}</td><td><strong>${inventory[p]}</strong></td>`;
                 invBody.appendChild(tr);
             });
 
-            // Render Assignments Table
             const assignBody = document.getElementById('admin-assignments-table-body');
             assignBody.innerHTML = '';
-            assignments.forEach(a => {
+            
+            // 1. Get search filter text
+            const filterText = (document.getElementById('admin-filter')?.value || '').toLowerCase();
+            
+            // 2. Sort by newest date
+            let sortedAssignments = [...assignments].sort((a, b) => (b.timestamp || parseInt(b.id)) - (a.timestamp || parseInt(a.id)));
+            
+            // 3. Filter results based on search box
+            let filteredAssignments = sortedAssignments.filter(a => {
+                const displayDate = a.dateTimeStr || new Date(parseInt(a.id)).toLocaleString();
+                return (
+                    a.product.toLowerCase().includes(filterText) ||
+                    (a.serial && a.serial.toLowerCase().includes(filterText)) ||
+                    a.so.toLowerCase().includes(filterText) ||
+                    a.customer.toLowerCase().includes(filterText) ||
+                    displayDate.toLowerCase().includes(filterText)
+                );
+            });
+
+            filteredAssignments.forEach(a => {
+                const displayDate = a.dateTimeStr || new Date(parseInt(a.id)).toLocaleString();
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
+                    <td><small style="color: #555;">${displayDate}</small></td>
                     <td>${a.product}</td>
                     <td>
                         <input type="text" class="inline-input" value="${a.serial || ''}" 
@@ -545,7 +584,6 @@
             localStorage.setItem('asset_assignments', JSON.stringify(assignments));
         }
 
-        // Run on load
         window.onload = init;
     </script>
 </body>
