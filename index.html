@@ -103,15 +103,28 @@
             background-color: #dc3545;
             color: white;
             border: none;
-            padding: 5px 10px;
+            padding: 6px 10px;
             border-radius: 4px;
             cursor: pointer;
+            font-weight: bold;
+        }
+        button.done-btn {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 6px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button.done-btn:hover {
+            background-color: #218838;
         }
         .toggle-btn {
             background-color: #e2e6ea;
             color: #333;
             border: 1px solid #dae0e5;
-            padding: 5px 10px;
+            padding: 6px 10px;
             font-size: 12px;
             font-weight: bold;
             border-radius: 4px;
@@ -297,7 +310,6 @@
                         <input type="number" id="admin-qty" placeholder="Quantity" min="1" value="1" style="width: 100px; margin-bottom:0;" required oninput="generateDynamicInputs()">
                     </div>
                     
-                    <!-- NEW SAME SALES ORDER TOGGLE -->
                     <div style="margin: 15px 0 10px 0; background-color: #f4f6f9; padding: 10px; border-radius: 4px; border: 1px solid #ccc; display: inline-block;">
                         <label style="font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 8px;">
                             <input type="checkbox" id="admin-same-so" checked onchange="generateDynamicInputs()" style="margin:0; width: 18px; height: 18px;"> 
@@ -393,6 +405,7 @@
         let PRODUCTS = Array.from({length: 9}, (_, i) => `Product ${i + 1}`);
         let inventory = {};
         let assignments = [];
+        let completedAssignments = []; // New array to archive completed orders
         
         // Memory trackers for unfolded rows
         let expandedAdminRows = new Set();
@@ -407,10 +420,12 @@
                 PRODUCTS = data.PRODUCTS || PRODUCTS;
                 inventory = data.inventory || {};
                 assignments = data.assignments || [];
+                completedAssignments = data.completedAssignments || [];
             } else {
                 PRODUCTS = JSON.parse(localStorage.getItem('asset_products')) || PRODUCTS;
                 inventory = JSON.parse(localStorage.getItem('asset_inventory')) || {};
                 assignments = JSON.parse(localStorage.getItem('asset_assignments')) || [];
+                completedAssignments = JSON.parse(localStorage.getItem('asset_completed')) || [];
                 saveData(); 
             }
             
@@ -427,7 +442,8 @@
             db.collection("tracker").doc("trackerData").set({
                 PRODUCTS: PRODUCTS,
                 inventory: inventory,
-                assignments: assignments
+                assignments: assignments,
+                completedAssignments: completedAssignments
             });
         }
 
@@ -519,7 +535,7 @@
             const groupBy = document.getElementById('dash-group').value;
             const globalSearch = (document.getElementById('dash-global-search')?.value || '').toLowerCase();
             
-            // Stats ALWAYS reflect the selected product dropdown to prevent confusion
+            // Stats ALWAYS reflect the selected product dropdown
             const qtyOnHand = inventory[selectedProduct] || 0;
             const productAssignments = assignments.filter(a => a.product === selectedProduct);
             const qtyAssigned = productAssignments.reduce((sum, a) => sum + parseInt(a.qty), 0);
@@ -534,7 +550,6 @@
             
             let filteredAssignments = [];
             
-            // Check if user is using the Global Search
             if (globalSearch) {
                 filteredAssignments = assignments.filter(a => {
                     const soMatch = a.sos ? a.sos.some(s => s.toLowerCase().includes(globalSearch)) : (a.so && a.so.toLowerCase().includes(globalSearch));
@@ -542,7 +557,6 @@
                     return soMatch || custMatch;
                 });
             } else {
-                // Normal view based on product dropdown
                 filteredAssignments = assignments.filter(a => a.product === selectedProduct);
             }
 
@@ -588,14 +602,12 @@
                 let displayStyle = isExpanded ? 'block' : 'none';
                 let btnText = isExpanded ? '▲ Hide Details' : `▼ Show ${a.qty - 1} More`;
 
-                // Add the FIRST item
                 let sVal0 = currentSerials[0] ? currentSerials[0] : '<span style="color:#888;">N/A</span>';
                 serialHTML += `<div style="margin-bottom: 4px;">${sVal0}</div>`;
                 
                 let soVal0 = currentSOs[0] ? currentSOs[0] : '<span style="color:#888;">N/A</span>';
                 soHTML += `<div style="margin-bottom: 4px;">${soVal0}</div>`;
                 
-                // Add the rest hidden behind a collapse
                 if (a.qty > 1) {
                     serialHTML += `<div id="dash-details-serial-${a.id}" style="display: ${displayStyle};">`;
                     soHTML += `<div id="dash-details-so-${a.id}" style="display: ${displayStyle};">`;
@@ -611,11 +623,9 @@
                     serialHTML += `</div>`;
                     soHTML += `</div>`;
                     
-                    // Create Toggle Button for the Actions column
-                    btnHTML = `<button id="dash-btn-toggle-${a.id}" class="toggle-btn" style="width: 100%; white-space: nowrap;" onclick="toggleDashDetails('${a.id}', ${a.qty})">${btnText}</button>`;
+                    btnHTML = `<button id="dash-btn-toggle-${a.id}" class="toggle-btn" style="white-space: nowrap;" onclick="toggleDashDetails('${a.id}', ${a.qty})">${btnText}</button>`;
                 }
                 
-                // Highlight row if searching globally
                 let highlightStyle = globalSearch ? 'background-color: #fff9e6;' : '';
 
                 tr.innerHTML = `
@@ -625,7 +635,7 @@
                     <td style="${highlightStyle}">${soHTML}</td>
                     <td style="${highlightStyle}">${a.customer}</td>
                     <td style="${highlightStyle}">${a.qty}</td>
-                    <td style="${highlightStyle} min-width: 120px;">${btnHTML}</td>
+                    <td style="${highlightStyle} min-width: 100px;">${btnHTML}</td>
                 `;
                 tbody.appendChild(tr);
             });
@@ -776,7 +786,6 @@
                     <div class="dynamic-row">
                         <input type="text" id="admin-serial-${i}" value="${sVal}" placeholder="Serial ${i+1} (Optional)">`;
                 
-                // Only render individual SO inputs if the checkbox is unchecked
                 if (!isSameSo) {
                     const soVal = currentSOs[i] || '';
                     rowHTML += `<input type="text" id="admin-so-${i}" value="${soVal}" placeholder="Sales Order ${i+1} (Optional)">`;
@@ -827,9 +836,8 @@
             assignments.push(newAssignment);
             saveData();
             
-            // Reset logic
             document.getElementById('assign-form').reset();
-            document.getElementById('admin-same-so').checked = true; // Reset checkbox to default
+            document.getElementById('admin-same-so').checked = true; 
             productSelect.value = product;
             generateDynamicInputs(); 
             
@@ -894,8 +902,31 @@
             }
         }
 
+        // --- NEW: COMPLETE ASSIGNMENT (DONE) LOGIC ---
+        function completeAssignment(id) {
+            if(confirm("Mark this order as Done? This will officially deduct the quantity from your On Hand inventory and move the record to History.")) {
+                const assignmentIndex = assignments.findIndex(a => a.id === id);
+                if (assignmentIndex > -1) {
+                    const assignment = assignments[assignmentIndex];
+                    
+                    // Deduct from on-hand inventory
+                    const currentQty = inventory[assignment.product] || 0;
+                    inventory[assignment.product] = Math.max(0, currentQty - assignment.qty);
+                    
+                    // Stamp completion date and move to history archive
+                    assignment.completedAtStr = new Date().toLocaleString();
+                    completedAssignments.push(assignment);
+                    
+                    // Remove from active list
+                    assignments.splice(assignmentIndex, 1);
+                    
+                    saveData();
+                }
+            }
+        }
+
         function deleteAssignment(id) {
-            if(confirm("Are you sure you want to delete this assignment?")) {
+            if(confirm("Are you sure you want to completely delete this assignment without affecting inventory?")) {
                 assignments = assignments.filter(a => a.id !== id);
                 saveData();
             }
@@ -984,7 +1015,6 @@
                 let displayStyle = isExpanded ? 'block' : 'none';
                 let btnText = isExpanded ? '▲ Hide Details' : `▼ Show ${a.qty - 1} More`;
 
-                // First Item
                 let sVal0 = currentSerials[0] || '';
                 serialHTML += `<input type="text" class="inline-input" style="margin-bottom:4px; display:block;" value="${sVal0}" 
                                onchange="updateSerialNumber('${a.id}', 0, this.value)" placeholder="Add Serial 1...">`;
@@ -993,7 +1023,6 @@
                 soHTML += `<input type="text" class="inline-input" style="margin-bottom:4px; display:block;" value="${soVal0}" 
                                onchange="updateSalesOrder('${a.id}', 0, this.value)" placeholder="Add SO 1...">`;
 
-                // Collapsible items
                 if (a.qty > 1) {
                     serialHTML += `<div id="admin-details-serial-${a.id}" style="display: ${displayStyle};">`;
                     soHTML += `<div id="admin-details-so-${a.id}" style="display: ${displayStyle};">`;
@@ -1011,10 +1040,11 @@
                     serialHTML += `</div>`;
                     soHTML += `</div>`;
                     
-                    // Create Toggle Button for the Actions column
-                    btnHTML = `<button id="admin-btn-toggle-${a.id}" class="toggle-btn" style="width: 100%; white-space: nowrap; margin-bottom: 5px;" onclick="toggleAdminDetails('${a.id}', ${a.qty})">${btnText}</button><br>`;
+                    // Build the toggle button logic into the Action row flexbox
+                    btnHTML = `<button id="admin-btn-toggle-${a.id}" class="toggle-btn" style="white-space: nowrap;" onclick="toggleAdminDetails('${a.id}', ${a.qty})">${btnText}</button>`;
                 }
 
+                // Render Action Column with Side-by-Side Flexbox Alignment
                 tr.innerHTML = `
                     <td><small style="color: #555;">${displayDate}</small></td>
                     <td>${a.product}</td>
@@ -1025,9 +1055,12 @@
                         <input type="number" class="inline-input" style="width: 60px;" value="${a.qty}" 
                                onchange="updateQuantity('${a.id}', this.value)" min="1">
                     </td>
-                    <td style="min-width: 120px;">
-                        ${btnHTML}
-                        <button class="delete-btn" style="width: 100%;" onclick="deleteAssignment('${a.id}')">Delete</button>
+                    <td style="white-space: nowrap;">
+                        <div style="display: flex; gap: 5px; align-items: flex-start;">
+                            ${btnHTML}
+                            <button class="done-btn" title="Mark as shipped and deduct from inventory" onclick="completeAssignment('${a.id}')">Done</button>
+                            <button class="delete-btn" title="Delete without affecting inventory" onclick="deleteAssignment('${a.id}')">Delete</button>
+                        </div>
                     </td>
                 `;
                 assignBody.appendChild(tr);
