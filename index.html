@@ -202,6 +202,7 @@
             font-size: 14px;
             margin: 0;
             width: 90%;
+            height: 32px;
             box-sizing: border-box;
             border: 1px solid #aaa;
         }
@@ -521,16 +522,19 @@
         function toggleAdminDetails(id, qty) {
             const sDiv = document.getElementById(`admin-details-serial-${id}`);
             const soDiv = document.getElementById(`admin-details-so-${id}`);
+            const actionDiv = document.getElementById(`admin-details-action-${id}`);
             const btn = document.getElementById(`admin-btn-toggle-${id}`);
             
             if (sDiv.style.display === 'none') {
                 sDiv.style.display = 'block';
                 if(soDiv) soDiv.style.display = 'block';
+                if(actionDiv) actionDiv.style.display = 'block';
                 btn.innerHTML = `▲ Hide Details`;
                 expandedAdminRows.add(id);
             } else {
                 sDiv.style.display = 'none';
                 if(soDiv) soDiv.style.display = 'none';
+                if(actionDiv) actionDiv.style.display = 'none';
                 btn.innerHTML = `▼ Show ${qty - 1} More`;
                 expandedAdminRows.delete(id);
             }
@@ -907,84 +911,65 @@
             }
         }
 
-        // --- PARTIAL COMPLETION & DELETION LOGIC ---
-        function completeAssignment(id) {
-            const assignmentIndex = assignments.findIndex(a => a.id === id);
-            if (assignmentIndex === -1) return;
-            const assignment = assignments[assignmentIndex];
-            
-            let qtyToProcess = assignment.qty;
-
-            if (assignment.qty > 1) {
-                const input = prompt(`This order has ${assignment.qty} units.\nHow many units do you want to mark as DONE?\n\n(Note: This will process starting from the top row)`, assignment.qty);
-                if (input === null) return; 
-                qtyToProcess = parseInt(input);
-                
-                if (isNaN(qtyToProcess) || qtyToProcess < 1 || qtyToProcess > assignment.qty) {
-                    alert("Invalid quantity entered.");
-                    return;
+        // --- SINGLE UNIT COMPLETION & DELETION LOGIC ---
+        function completeSingleUnit(id, index) {
+            if(confirm("Mark this specific unit as Done? This will deduct 1 from your On Hand inventory and move this record to History.")) {
+                const assignmentIndex = assignments.findIndex(a => a.id === id);
+                if (assignmentIndex > -1) {
+                    const a = assignments[assignmentIndex];
+                    
+                    // Deduct 1 from on-hand inventory
+                    const currentQty = inventory[a.product] || 0;
+                    inventory[a.product] = Math.max(0, currentQty - 1);
+                    
+                    // Create history record for this 1 unit
+                    let sVal = (a.serials && a.serials[index]) ? a.serials[index] : '';
+                    let soVal = (a.sos && a.sos[index]) ? a.sos[index] : '';
+                    
+                    const completedRecord = {
+                        id: a.id + '-' + Date.now(),
+                        product: a.product,
+                        serial: sVal,
+                        so: soVal,
+                        customer: a.customer,
+                        qty: 1,
+                        timestamp: a.timestamp,
+                        dateTimeStr: a.dateTimeStr,
+                        completedAtStr: new Date().toLocaleString()
+                    };
+                    completedAssignments.push(completedRecord);
+                    
+                    // Remove this index from active list
+                    if(a.qty === 1) {
+                        assignments.splice(assignmentIndex, 1);
+                    } else {
+                        a.qty -= 1;
+                        if(a.serials) a.serials.splice(index, 1);
+                        if(a.sos) a.sos.splice(index, 1);
+                    }
+                    
+                    saveData();
                 }
-            } else {
-                if(!confirm("Mark this order as Done? This will deduct the quantity from your On Hand inventory and move it to History.")) return;
             }
-            
-            // Deduct from on-hand inventory
-            const currentQty = inventory[assignment.product] || 0;
-            inventory[assignment.product] = Math.max(0, currentQty - qtyToProcess);
-            
-            // Stamp completion date and move to history archive
-            const completedRecord = JSON.parse(JSON.stringify(assignment)); // Deep copy
-            completedRecord.qty = qtyToProcess;
-            completedRecord.serials = assignment.serials ? assignment.serials.slice(0, qtyToProcess) : [];
-            completedRecord.sos = assignment.sos ? assignment.sos.slice(0, qtyToProcess) : [];
-            completedRecord.completedAtStr = new Date().toLocaleString();
-            completedAssignments.push(completedRecord);
-            
-            // Adjust the active order list
-            if (qtyToProcess === assignment.qty) {
-                assignments.splice(assignmentIndex, 1);
-            } else {
-                assignment.qty -= qtyToProcess;
-                if (assignment.serials) assignment.serials = assignment.serials.slice(qtyToProcess);
-                if (assignment.sos) assignment.sos = assignment.sos.slice(qtyToProcess);
-            }
-            
-            saveData();
-            renderAdminTables();
-            updateDashboard();
         }
 
-        function deleteAssignment(id) {
-            const assignmentIndex = assignments.findIndex(a => a.id === id);
-            if (assignmentIndex === -1) return;
-            const assignment = assignments[assignmentIndex];
-            
-            let qtyToProcess = assignment.qty;
-
-            if (assignment.qty > 1) {
-                const input = prompt(`This order has ${assignment.qty} units.\nHow many units do you want to DELETE without affecting inventory?\n\n(Note: This will delete starting from the top row)`, assignment.qty);
-                if (input === null) return; 
-                qtyToProcess = parseInt(input);
-                
-                if (isNaN(qtyToProcess) || qtyToProcess < 1 || qtyToProcess > assignment.qty) {
-                    alert("Invalid quantity entered.");
-                    return;
+        function deleteSingleUnit(id, index) {
+            if(confirm("Are you sure you want to delete this specific unit without affecting inventory?")) {
+                const assignmentIndex = assignments.findIndex(a => a.id === id);
+                if (assignmentIndex > -1) {
+                    const a = assignments[assignmentIndex];
+                    
+                    if(a.qty === 1) {
+                        assignments.splice(assignmentIndex, 1);
+                    } else {
+                        a.qty -= 1;
+                        if(a.serials) a.serials.splice(index, 1);
+                        if(a.sos) a.sos.splice(index, 1);
+                    }
+                    
+                    saveData();
                 }
-            } else {
-                if(!confirm("Are you sure you want to completely delete this assignment without affecting inventory?")) return;
             }
-
-            if (qtyToProcess === assignment.qty) {
-                assignments.splice(assignmentIndex, 1);
-            } else {
-                assignment.qty -= qtyToProcess;
-                if (assignment.serials) assignment.serials = assignment.serials.slice(qtyToProcess);
-                if (assignment.sos) assignment.sos = assignment.sos.slice(qtyToProcess);
-            }
-            
-            saveData();
-            renderAdminTables();
-            updateDashboard();
         }
 
         function renderAdminTables() {
@@ -1064,37 +1049,53 @@
                 
                 let serialHTML = '';
                 let soHTML = '';
+                let actionHTML = '';
                 let btnHTML = '';
                 
                 let isExpanded = expandedAdminRows.has(a.id);
                 let displayStyle = isExpanded ? 'block' : 'none';
                 let btnText = isExpanded ? '▲ Hide Details' : `▼ Show ${a.qty - 1} More`;
 
+                // First Item (Index 0)
                 let sVal0 = currentSerials[0] || '';
-                serialHTML += `<input type="text" class="inline-input" style="margin-bottom:4px; display:block;" value="${sVal0}" 
+                serialHTML += `<input type="text" class="inline-input" style="display:block; margin-bottom:4px; height: 32px;" value="${sVal0}" 
                                onchange="updateSerialNumber('${a.id}', 0, this.value)" placeholder="Add Serial 1...">`;
                                
                 let soVal0 = currentSOs[0] || '';
-                soHTML += `<input type="text" class="inline-input" style="margin-bottom:4px; display:block;" value="${soVal0}" 
+                soHTML += `<input type="text" class="inline-input" style="display:block; margin-bottom:4px; height: 32px;" value="${soVal0}" 
                                onchange="updateSalesOrder('${a.id}', 0, this.value)" placeholder="Add SO 1...">`;
 
+                actionHTML += `<div style="display: flex; gap: 5px; height: 32px; margin-bottom: 4px;">
+                                <button class="done-btn icon-btn" title="Mark this unit as done" onclick="completeSingleUnit('${a.id}', 0)">✔️</button>
+                                <button class="delete-btn icon-btn" title="Delete this unit" onclick="deleteSingleUnit('${a.id}', 0)">🗑️</button>
+                               </div>`;
+
+                // Collapsible items (Index 1 to qty-1)
                 if (a.qty > 1) {
                     serialHTML += `<div id="admin-details-serial-${a.id}" style="display: ${displayStyle};">`;
                     soHTML += `<div id="admin-details-so-${a.id}" style="display: ${displayStyle};">`;
+                    actionHTML += `<div id="admin-details-action-${a.id}" style="display: ${displayStyle};">`;
                     
                     for(let i=1; i < a.qty; i++) {
                         let sVal = currentSerials[i] || '';
-                        serialHTML += `<input type="text" class="inline-input" style="margin-bottom:4px; display:block;" value="${sVal}" 
+                        serialHTML += `<input type="text" class="inline-input" style="display:block; margin-bottom:4px; height: 32px;" value="${sVal}" 
                                        onchange="updateSerialNumber('${a.id}', ${i}, this.value)" placeholder="Add Serial ${i+1}...">`;
                                        
                         let soVal = currentSOs[i] || '';
-                        soHTML += `<input type="text" class="inline-input" style="margin-bottom:4px; display:block;" value="${soVal}" 
+                        soHTML += `<input type="text" class="inline-input" style="display:block; margin-bottom:4px; height: 32px;" value="${soVal}" 
                                        onchange="updateSalesOrder('${a.id}', ${i}, this.value)" placeholder="Add SO ${i+1}...">`;
+                                       
+                        actionHTML += `<div style="display: flex; gap: 5px; height: 32px; margin-bottom: 4px;">
+                                        <button class="done-btn icon-btn" title="Mark this unit as done" onclick="completeSingleUnit('${a.id}', ${i})">✔️</button>
+                                        <button class="delete-btn icon-btn" title="Delete this unit" onclick="deleteSingleUnit('${a.id}', ${i})">🗑️</button>
+                                       </div>`;
                     }
                     
                     serialHTML += `</div>`;
                     soHTML += `</div>`;
+                    actionHTML += `</div>`;
                     
+                    // Create Toggle Button for the Details column
                     btnHTML = `<button id="admin-btn-toggle-${a.id}" class="toggle-btn" style="white-space: nowrap;" onclick="toggleAdminDetails('${a.id}', ${a.qty})">${btnText}</button>`;
                 }
 
@@ -1105,16 +1106,11 @@
                     <td>${soHTML}</td>
                     <td>${a.customer}</td>
                     <td>
-                        <input type="number" class="inline-input" style="width: 60px;" value="${a.qty}" 
+                        <input type="number" class="inline-input" style="width: 60px; height: 32px;" value="${a.qty}" 
                                onchange="updateQuantity('${a.id}', this.value)" min="1">
                     </td>
                     <td style="min-width: 100px;">${btnHTML}</td>
-                    <td style="white-space: nowrap;">
-                        <div style="display: flex; gap: 5px; align-items: flex-start;">
-                            <button class="done-btn icon-btn" title="Mark as shipped and deduct from inventory" onclick="completeAssignment('${a.id}')">✔️</button>
-                            <button class="delete-btn icon-btn" title="Delete without affecting inventory" onclick="deleteAssignment('${a.id}')">🗑️</button>
-                        </div>
-                    </td>
+                    <td style="white-space: nowrap; vertical-align: top;">${actionHTML}</td>
                 `;
                 assignBody.appendChild(tr);
             });
