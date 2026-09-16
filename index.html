@@ -93,16 +93,16 @@
         
         .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; margin-top: 15px; border: 1px solid var(--border); border-radius: 4px; }
         table { width: 100%; min-width: 800px; border-collapse: collapse; }
-        th, td { border: 1px solid var(--border); padding: 10px; text-align: left; vertical-align: top; font-size: 14px; }
+        th, td { border: 1px solid var(--border); padding: 10px; text-align: left; vertical-align: top; font-size: 13px; }
         th { background-color: var(--secondary); white-space: nowrap; }
         
         .admin-section { border: 1px solid var(--border); padding: 15px; margin-bottom: 20px; border-radius: 8px; overflow-x: hidden; }
         .name-slot { display: inline-block; margin-right: 10px; margin-bottom: 10px; }
         .name-slot label { display: block; font-size: 12px; color: #666; margin-bottom: 4px; font-weight: bold; }
-        .inline-input { padding: 6px; font-size: 13px; margin: 0; width: 100%; min-width: 110px; height: 32px; box-sizing: border-box; border: 1px solid #aaa; border-radius: 4px; }
+        .inline-input { padding: 6px; font-size: 13px; margin: 0; width: 100%; min-width: 100px; height: 32px; box-sizing: border-box; border: 1px solid #aaa; border-radius: 4px; }
         .search-bar { width: 100%; padding: 10px; font-size: 14px; border: 2px solid var(--primary); border-radius: 6px; margin-bottom: 10px; box-sizing: border-box; }
         .dynamic-row { display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
-        .dynamic-row input { margin: 0; flex: 1; min-width: 150px; }
+        .dynamic-row input { margin: 0; flex: 1; min-width: 130px; }
         .batch-actions-row { display: flex; gap: 5px; margin-top: 5px; border-top: 1px solid #ddd; padding-top: 8px; }
         
         .perm-check { display: flex; align-items: center; gap: 5px; margin-bottom: 8px; font-size: 14px; cursor: pointer; }
@@ -179,7 +179,7 @@
                 
                 <div style="margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #ccc;">
                     <label for="dash-global-search" style="font-weight: bold; font-size: 16px; display:block; color: var(--primary);">Global Search (All Products):</label>
-                    <input type="text" id="dash-global-search" class="search-bar" style="max-width: 100%; margin-bottom: 0;" placeholder="🔍 Search any Customer or Sales Order..." onkeyup="updateDashboard()">
+                    <input type="text" id="dash-global-search" class="search-bar" style="max-width: 100%; margin-bottom: 0;" placeholder="🔍 Search Date, Product, Version, Key Code, Serial, SO, Customer..." onkeyup="updateDashboard()">
                     <small style="display: block; color: #666; margin-top: 5px;">Typing here will override the product selection below.</small>
                 </div>
 
@@ -220,6 +220,8 @@
                             <tr>
                                 <th>Date / Time</th>
                                 <th>Product</th>
+                                <th>Version</th>
+                                <th>Key Code</th>
                                 <th>Serial Number(s)</th>
                                 <th>Sales Order (SO)</th>
                                 <th>Customer</th>
@@ -255,7 +257,6 @@
                     <button type="submit" class="action-btn" style="margin-top: 15px; width: 100%; max-width: 200px;">Assign Unit(s)</button>
                 </form>
 
-                <!-- RECENT ASSIGNMENTS HISTORY TABLE -->
                 <div style="margin-top: 40px; border-top: 2px solid #eee; padding-top: 20px;">
                     <h3 style="color: var(--primary);">Recent Assignments (Last 10)</h3>
                     <div class="table-responsive">
@@ -264,6 +265,8 @@
                                 <tr>
                                     <th>Date / Time</th>
                                     <th>Product</th>
+                                    <th>Version</th>
+                                    <th>Key Code</th>
                                     <th>Serial Number</th>
                                     <th>Sales Order</th>
                                     <th>Customer</th>
@@ -313,7 +316,7 @@
             <div id="records" class="tab-content">
                 <h2>Manage Assignments</h2>
                 <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px;">
-                    <input type="text" id="admin-filter" class="search-bar" style="flex: 1; min-width: 200px; margin:0;" placeholder="🔍 Search Date, Product, SO..." onkeyup="renderAdminTables()">
+                    <input type="text" id="admin-filter" class="search-bar" style="flex: 1; min-width: 200px; margin:0;" placeholder="🔍 Search Date, Product, Version, Key Code, Serial, SO, Customer..." onkeyup="renderAdminTables()">
                     <select id="admin-group" class="search-bar" style="width:auto; margin:0;" onchange="renderAdminTables()">
                         <option value="none">Group By: None</option>
                         <option value="product">Group By: Product</option>
@@ -327,6 +330,8 @@
                             <tr>
                                 <th>Date / Time</th>
                                 <th>Product</th>
+                                <th>Version</th>
+                                <th>Key Code</th>
                                 <th>Serial Number(s)</th>
                                 <th>Sales Order(s)</th>
                                 <th>Customer</th>
@@ -403,7 +408,6 @@
         const auth = firebase.auth();
         const secondaryApp = firebase.initializeApp(firebaseConfig, "SecondaryApp");
 
-        // Variables
         let PRODUCTS = Array.from({length: 9}, (_, i) => `Product ${i + 1}`);
         let inventory = {};
         let assignments = [];
@@ -423,7 +427,6 @@
                 document.getElementById('login-screen').style.display = 'none';
                 document.getElementById('app-container').style.display = 'block';
                 document.getElementById('user-display').innerText = user.email;
-                
                 switchTab('home'); 
                 applyPermissionsUI();
             } else {
@@ -437,55 +440,41 @@
             const email = document.getElementById('login-email').value.trim();
             const pass = document.getElementById('login-pass').value;
             const errBox = document.getElementById('login-error');
-            
-            auth.signInWithEmailAndPassword(email, pass)
-                .catch(err => {
-                    errBox.style.display = 'block';
-                    errBox.innerText = "Error: " + err.message;
-                });
+            auth.signInWithEmailAndPassword(email, pass).catch(err => {
+                errBox.style.display = 'block'; errBox.innerText = "Error: " + err.message;
+            });
         }
 
-        function logoutUser() {
-            auth.signOut();
-        }
+        function logoutUser() { auth.signOut(); }
 
         function applyPermissionsUI() {
             if (!currentUser) return;
-            
             if (Object.keys(userPermissions).length === 0) {
                 userPermissions[currentUser.email] = { isAdmin: true, canAssign: true, canManageInv: true, canManageRecords: true };
                 saveData();
             }
-            
             const perms = userPermissions[currentUser.email] || {};
             
             document.getElementById('btn-home-assign').style.display = perms.canAssign || perms.isAdmin ? 'flex' : 'none';
             document.getElementById('btn-home-inventory').style.display = perms.canManageInv || perms.isAdmin ? 'flex' : 'none';
             document.getElementById('btn-home-records').style.display = perms.canManageRecords || perms.isAdmin ? 'flex' : 'none';
             document.getElementById('btn-home-users').style.display = perms.isAdmin ? 'flex' : 'none';
-            
             renderUsersTable();
         }
 
         // ==========================================
-        // 3. REAL-TIME CLOUD SYNC & AUTO-RECOVERY
+        // 3. REAL-TIME CLOUD SYNC
         // ==========================================
         db.collection("tracker").doc("trackerData").onSnapshot((doc) => {
             const localAssignments = JSON.parse(localStorage.getItem('asset_assignments')) || [];
-            
             if (localAssignments.length > 0 && !window.hasRecoveredData) {
-                console.log("FORCING RECOVERY FROM LOCAL MEMORY...");
                 PRODUCTS = JSON.parse(localStorage.getItem('asset_products')) || Array.from({length: 9}, (_, i) => `Product ${i + 1}`);
                 inventory = JSON.parse(localStorage.getItem('asset_inventory')) || {};
                 assignments = localAssignments;
                 completedAssignments = JSON.parse(localStorage.getItem('asset_completed')) || [];
-                
                 if (doc.exists) userPermissions = doc.data().userPermissions || {};
                 
-                window.hasRecoveredData = true;
-                saveData(); 
-                alert("Data successfully restored from your laptop memory to the cloud!");
-                
+                window.hasRecoveredData = true; saveData(); 
             } else if (doc.exists) {
                 const data = doc.data();
                 PRODUCTS = data.PRODUCTS || PRODUCTS;
@@ -502,22 +491,16 @@
             
             populateDropdowns();
             renderProductNames();
-            if (document.getElementById('assign-dynamic-container').innerHTML === '') {
-                generateDynamicInputs(); 
-            }
+            if (document.getElementById('assign-dynamic-container').innerHTML === '') generateDynamicInputs(); 
             updateDashboard();
             renderAdminTables();
-            renderRecentAssignments(); // Update the new recent table
+            renderRecentAssignments(); 
             applyPermissionsUI(); 
         });
 
         function saveData() {
             db.collection("tracker").doc("trackerData").set({
-                PRODUCTS: PRODUCTS,
-                inventory: inventory,
-                assignments: assignments,
-                completedAssignments: completedAssignments,
-                userPermissions: userPermissions
+                PRODUCTS, inventory, assignments, completedAssignments, userPermissions
             });
         }
 
@@ -533,31 +516,25 @@
             const isAdmin = document.getElementById('perm-admin').checked;
 
             if(!email || !pass) return;
-
             secondaryApp.auth().createUserWithEmailAndPassword(email, pass)
                 .then(() => {
                     secondaryApp.auth().signOut();
                     userPermissions[email] = { isAdmin, canAssign, canManageInv, canManageRecords };
-                    saveData();
-                    alert(`Success! Account created for ${email}.`);
+                    saveData(); alert(`Success! Account created for ${email}.`);
                     document.getElementById('new-user-form').reset();
-                })
-                .catch(err => alert("Error creating user: " + err.message));
+                }).catch(err => alert("Error creating user: " + err.message));
         }
 
         function resetUserPassword(email) {
             if(confirm(`Send an automated password reset email to ${email}?`)) {
-                auth.sendPasswordResetEmail(email)
-                    .then(() => alert("Password reset email sent!"))
-                    .catch(err => alert("Error: " + err.message));
+                auth.sendPasswordResetEmail(email).then(() => alert("Password reset email sent!")).catch(err => alert("Error: " + err.message));
             }
         }
 
         function removeUserAccess(email) {
             if(email === currentUser.email) return alert("You cannot remove your own access.");
             if(confirm(`Are you sure you want to revoke access for ${email}? They will no longer be able to view the app.`)) {
-                delete userPermissions[email];
-                saveData();
+                delete userPermissions[email]; saveData();
             }
         }
 
@@ -565,7 +542,6 @@
             const tbody = document.getElementById('users-table-body');
             if(!tbody) return;
             tbody.innerHTML = '';
-            
             for (const [email, perms] of Object.entries(userPermissions)) {
                 let permTags = [];
                 if(perms.isAdmin) permTags.push('<span style="color: #dc3545; font-weight: bold;">Super Admin</span>');
@@ -575,16 +551,13 @@
                     if(perms.canManageRecords) permTags.push('Records');
                     if(permTags.length === 0) permTags.push('<em>Read Only (Dashboard)</em>');
                 }
-
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td><strong>${email}</strong></td>
-                    <td>${permTags.join(', ')}</td>
+                    <td><strong>${email}</strong></td><td>${permTags.join(', ')}</td>
                     <td>
                         <button class="action-btn" style="padding: 5px 10px; font-size: 12px; background-color: #6c757d;" onclick="resetUserPassword('${email}')">Reset Password</button>
                         <button class="delete-btn" style="padding: 5px 10px; font-size: 12px;" onclick="removeUserAccess('${email}')">Revoke Access</button>
-                    </td>
-                `;
+                    </td>`;
                 tbody.appendChild(tr);
             }
         }
@@ -593,17 +566,15 @@
         // 5. CORE APPLICATION LOGIC
         // ==========================================
         function switchTab(tabId) {
-            if (currentUser) {
+            if (currentUser && tabId !== 'home') {
                 const perms = userPermissions[currentUser.email] || {};
                 if (tabId === 'assign' && !perms.canAssign && !perms.isAdmin) return switchTab('home');
                 if (tabId === 'inventory' && !perms.canManageInv && !perms.isAdmin) return switchTab('home');
                 if (tabId === 'records' && !perms.canManageRecords && !perms.isAdmin) return switchTab('home');
                 if (tabId === 'users' && !perms.isAdmin) return switchTab('home');
             }
-            
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
             document.getElementById(tabId).classList.add('active');
-            
             if (tabId === 'dashboard') updateDashboard();
         }
 
@@ -623,19 +594,25 @@
         }
         
         function toggleDashDetails(id, qty) {
+            const vDiv = document.getElementById(`dash-details-version-${id}`);
+            const kDiv = document.getElementById(`dash-details-keycode-${id}`);
             const sDiv = document.getElementById(`dash-details-serial-${id}`);
             const soDiv = document.getElementById(`dash-details-so-${id}`);
             const btn = document.getElementById(`dash-btn-toggle-${id}`);
             if (sDiv.style.display === 'none') {
                 sDiv.style.display = 'block'; if(soDiv) soDiv.style.display = 'block';
+                if(vDiv) vDiv.style.display = 'block'; if(kDiv) kDiv.style.display = 'block';
                 btn.innerHTML = `▲ Hide Details`; expandedDashRows.add(id);
             } else {
                 sDiv.style.display = 'none'; if(soDiv) soDiv.style.display = 'none';
+                if(vDiv) vDiv.style.display = 'none'; if(kDiv) kDiv.style.display = 'none';
                 btn.innerHTML = `▼ Show ${qty - 1} More`; expandedDashRows.delete(id);
             }
         }
 
         function toggleAdminDetails(id, qty) {
+            const vDiv = document.getElementById(`admin-details-version-${id}`);
+            const kDiv = document.getElementById(`admin-details-keycode-${id}`);
             const sDiv = document.getElementById(`admin-details-serial-${id}`);
             const soDiv = document.getElementById(`admin-details-so-${id}`);
             const actionDiv = document.getElementById(`admin-details-action-${id}`);
@@ -643,10 +620,12 @@
             const btn = document.getElementById(`admin-btn-toggle-${id}`);
             if (sDiv.style.display === 'none') {
                 sDiv.style.display = 'block'; if(soDiv) soDiv.style.display = 'block';
+                if(vDiv) vDiv.style.display = 'block'; if(kDiv) kDiv.style.display = 'block';
                 if(actionDiv) actionDiv.style.display = 'block'; if(batchDiv) batchDiv.style.display = 'flex';
                 btn.innerHTML = `▲ Hide Details`; expandedAdminRows.add(id);
             } else {
                 sDiv.style.display = 'none'; if(soDiv) soDiv.style.display = 'none';
+                if(vDiv) vDiv.style.display = 'none'; if(kDiv) kDiv.style.display = 'none';
                 if(actionDiv) actionDiv.style.display = 'none'; if(batchDiv) batchDiv.style.display = 'none';
                 btn.innerHTML = `▼ Show ${qty - 1} More`; expandedAdminRows.delete(id);
             }
@@ -660,11 +639,10 @@
             const qtyOnHand = inventory[selectedProduct] || 0;
             const productAssignments = assignments.filter(a => a.product === selectedProduct);
             const qtyAssigned = productAssignments.reduce((sum, a) => sum + parseInt(a.qty), 0);
-            const forecast = qtyOnHand - qtyAssigned;
-
+            
             document.getElementById('dash-qty-on-hand').innerText = qtyOnHand;
             document.getElementById('dash-qty-assigned').innerText = qtyAssigned;
-            document.getElementById('dash-qty-forecast').innerText = forecast;
+            document.getElementById('dash-qty-forecast').innerText = qtyOnHand - qtyAssigned;
 
             const tbody = document.getElementById('dash-table-body');
             tbody.innerHTML = '';
@@ -673,8 +651,11 @@
             if (globalSearch) {
                 filteredAssignments = assignments.filter(a => {
                     const soMatch = a.sos ? a.sos.some(s => s.toLowerCase().includes(globalSearch)) : (a.so && a.so.toLowerCase().includes(globalSearch));
+                    const vMatch = a.versions ? a.versions.some(v => v.toLowerCase().includes(globalSearch)) : (a.version && a.version.toLowerCase().includes(globalSearch));
+                    const kMatch = a.keyCodes ? a.keyCodes.some(k => k.toLowerCase().includes(globalSearch)) : (a.keyCode && a.keyCode.toLowerCase().includes(globalSearch));
+                    const sMatch = a.serials ? a.serials.some(s => s.toLowerCase().includes(globalSearch)) : (a.serial && a.serial.toLowerCase().includes(globalSearch));
                     const custMatch = a.customer.toLowerCase().includes(globalSearch);
-                    return soMatch || custMatch;
+                    return soMatch || custMatch || vMatch || kMatch || sMatch;
                 });
             } else {
                 filteredAssignments = assignments.filter(a => a.product === selectedProduct);
@@ -699,42 +680,59 @@
                         currentGroup = itemGroup;
                         const groupTr = document.createElement('tr');
                         let groupName = groupBy === 'customer' ? 'Customer' : 'Sales Order (SO)';
-                        groupTr.innerHTML = `<td colspan="7" style="background-color: #d1ecf1; font-weight: bold; color: #0c5460;">${groupName}: ${currentGroup}</td>`;
+                        groupTr.innerHTML = `<td colspan="9" style="background-color: #d1ecf1; font-weight: bold; color: #0c5460;">${groupName}: ${currentGroup}</td>`;
                         tbody.appendChild(groupTr);
                     }
                 }
 
                 const tr = document.createElement('tr');
                 const displayDate = a.dateTimeStr || new Date(parseInt(a.id)).toLocaleString();
+                
+                let currentVersions = a.versions || []; if(!a.versions && a.version) currentVersions = [a.version]; 
+                let currentKeyCodes = a.keyCodes || []; if(!a.keyCodes && a.keyCode) currentKeyCodes = [a.keyCode]; 
                 let currentSerials = a.serials || []; if(!a.serials && a.serial) currentSerials = [a.serial]; 
                 let currentSOs = a.sos || []; if(!a.sos && a.so) currentSOs = Array(a.qty).fill(a.so); 
-                let serialHTML = ''; let soHTML = ''; let btnHTML = '';
+                
+                let versionHTML = ''; let keyCodeHTML = ''; let serialHTML = ''; let soHTML = ''; let btnHTML = '';
                 
                 let isExpanded = expandedDashRows.has(a.id);
                 let displayStyle = isExpanded ? 'block' : 'none';
                 let btnText = isExpanded ? '▲ Hide Details' : `▼ Show ${a.qty - 1} More`;
 
+                let vVal0 = currentVersions[0] ? currentVersions[0] : '<span style="color:#888;">N/A</span>';
+                versionHTML += `<div style="margin-bottom: 4px;">${vVal0}</div>`;
+                let kVal0 = currentKeyCodes[0] ? currentKeyCodes[0] : '<span style="color:#888;">N/A</span>';
+                keyCodeHTML += `<div style="margin-bottom: 4px;">${kVal0}</div>`;
                 let sVal0 = currentSerials[0] ? currentSerials[0] : '<span style="color:#888;">N/A</span>';
                 serialHTML += `<div style="margin-bottom: 4px;">${sVal0}</div>`;
                 let soVal0 = currentSOs[0] ? currentSOs[0] : '<span style="color:#888;">N/A</span>';
                 soHTML += `<div style="margin-bottom: 4px;">${soVal0}</div>`;
                 
                 if (a.qty > 1) {
+                    versionHTML += `<div id="dash-details-version-${a.id}" style="display: ${displayStyle};">`;
+                    keyCodeHTML += `<div id="dash-details-keycode-${a.id}" style="display: ${displayStyle};">`;
                     serialHTML += `<div id="dash-details-serial-${a.id}" style="display: ${displayStyle};">`;
                     soHTML += `<div id="dash-details-so-${a.id}" style="display: ${displayStyle};">`;
                     for(let i=1; i < a.qty; i++) {
+                        let vVal = currentVersions[i] ? currentVersions[i] : '<span style="color:#888;">N/A</span>';
+                        versionHTML += `<div style="margin-bottom: 4px; color: #555;">${vVal}</div>`;
+                        let kVal = currentKeyCodes[i] ? currentKeyCodes[i] : '<span style="color:#888;">N/A</span>';
+                        keyCodeHTML += `<div style="margin-bottom: 4px; color: #555;">${kVal}</div>`;
                         let sVal = currentSerials[i] ? currentSerials[i] : '<span style="color:#888;">N/A</span>';
                         serialHTML += `<div style="margin-bottom: 4px; color: #555;">${sVal}</div>`;
                         let soVal = currentSOs[i] ? currentSOs[i] : '<span style="color:#888;">N/A</span>';
                         soHTML += `<div style="margin-bottom: 4px; color: #555;">${soVal}</div>`;
                     }
-                    serialHTML += `</div>`; soHTML += `</div>`;
+                    versionHTML += `</div>`; keyCodeHTML += `</div>`; serialHTML += `</div>`; soHTML += `</div>`;
                     btnHTML = `<button id="dash-btn-toggle-${a.id}" class="toggle-btn" style="width: 100%; white-space: nowrap;" onclick="toggleDashDetails('${a.id}', ${a.qty})">${btnText}</button>`;
                 }
+                
                 let highlightStyle = globalSearch ? 'background-color: #fff9e6;' : '';
                 tr.innerHTML = `
                     <td style="${highlightStyle}"><small style="color: #555;">${displayDate}</small></td>
                     <td style="${highlightStyle} font-weight: ${globalSearch ? 'bold' : 'normal'};">${a.product}</td>
+                    <td style="${highlightStyle}">${versionHTML}</td>
+                    <td style="${highlightStyle}">${keyCodeHTML}</td>
                     <td style="${highlightStyle}">${serialHTML}</td>
                     <td style="${highlightStyle}">${soHTML}</td>
                     <td style="${highlightStyle}">${a.customer}</td>
@@ -751,7 +749,7 @@
             container.innerHTML = '';
             PRODUCTS.forEach((p, index) => {
                 const div = document.createElement('div'); div.className = 'name-slot';
-                div.innerHTML = `<label>Slot ${index + 1}</label><input type="text" class="prod-name-input inline-input" value="${p}">`;
+                div.innerHTML = `<label>Slot ${index + 1}</label><input type="text" class="prod-name-input inline-input" style="width: 150px;" value="${p}">`;
                 container.appendChild(div);
             });
         }
@@ -760,7 +758,7 @@
             const container = document.getElementById('admin-product-names-list');
             const index = container.children.length;
             const div = document.createElement('div'); div.className = 'name-slot';
-            div.innerHTML = `<label>Slot ${index + 1}</label><input type="text" class="prod-name-input inline-input" value="Product ${index + 1}">`;
+            div.innerHTML = `<label>Slot ${index + 1}</label><input type="text" class="prod-name-input inline-input" style="width: 150px;" value="Product ${index + 1}">`;
             container.appendChild(div);
         }
 
@@ -808,15 +806,20 @@
             const isSameSo = document.getElementById('admin-same-so').checked;
             document.getElementById('admin-master-so').style.display = isSameSo ? 'block' : 'none';
             
-            const currentSerials = []; const currentSOs = [];
+            const currentVersions = []; const currentKeyCodes = []; const currentSerials = []; const currentSOs = [];
             for(let i=0; i < container.children.length; i++) {
+                const vInput = document.getElementById(`admin-version-${i}`); if(vInput) currentVersions[i] = vInput.value;
+                const kInput = document.getElementById(`admin-keycode-${i}`); if(kInput) currentKeyCodes[i] = kInput.value;
                 const sInput = document.getElementById(`admin-serial-${i}`); if(sInput) currentSerials[i] = sInput.value;
                 const soInput = document.getElementById(`admin-so-${i}`); if(soInput) currentSOs[i] = soInput.value;
             }
             
             container.innerHTML = '';
             for(let i=0; i < qty; i++) {
-                let rowHTML = `<div class="dynamic-row"><input type="text" class="inline-input" id="admin-serial-${i}" value="${currentSerials[i] || ''}" placeholder="Serial ${i+1} (Optional)">`;
+                let rowHTML = `<div class="dynamic-row">
+                    <input type="text" class="inline-input" id="admin-version-${i}" value="${currentVersions[i] || ''}" placeholder="Version ${i+1} (Optional)">
+                    <input type="text" class="inline-input" id="admin-keycode-${i}" value="${currentKeyCodes[i] || ''}" placeholder="Key Code ${i+1} (Optional)">
+                    <input type="text" class="inline-input" id="admin-serial-${i}" value="${currentSerials[i] || ''}" placeholder="Serial ${i+1} (Optional)">`;
                 if (!isSameSo) rowHTML += `<input type="text" class="inline-input" id="admin-so-${i}" value="${currentSOs[i] || ''}" placeholder="Sales Order ${i+1} (Optional)">`;
                 rowHTML += `</div>`; container.innerHTML += rowHTML;
             }
@@ -829,8 +832,10 @@
             const isSameSo = document.getElementById('admin-same-so').checked;
             const masterSo = document.getElementById('admin-master-so').value;
 
-            const serials = []; const sos = [];
+            const versions = []; const keyCodes = []; const serials = []; const sos = [];
             for(let i=0; i < qty; i++) {
+                const vInput = document.getElementById(`admin-version-${i}`); versions.push(vInput ? vInput.value : '');
+                const kInput = document.getElementById(`admin-keycode-${i}`); keyCodes.push(kInput ? kInput.value : '');
                 const sInput = document.getElementById(`admin-serial-${i}`); serials.push(sInput ? sInput.value : '');
                 if (isSameSo) sos.push(masterSo);
                 else { const soInput = document.getElementById(`admin-so-${i}`); sos.push(soInput ? soInput.value : ''); }
@@ -838,7 +843,7 @@
 
             const dateObj = new Date();
             assignments.push({
-                id: Date.now().toString(), product, serials, sos, customer, qty,
+                id: Date.now().toString(), product, versions, keyCodes, serials, sos, customer, qty,
                 timestamp: dateObj.getTime(), dateTimeStr: dateObj.toLocaleString()
             });
             saveData();
@@ -850,14 +855,21 @@
             alert("Order Assigned Successfully!");
         }
 
-        function updateSerialNumber(id, index, newSerial) {
+        function updateVersion(id, index, newVal) {
             const a = assignments.find(a => a.id === id);
-            if (a) { if(!a.serials) a.serials = new Array(a.qty).fill(''); a.serials[index] = newSerial; saveData(); }
+            if (a) { if(!a.versions) a.versions = new Array(a.qty).fill(''); a.versions[index] = newVal; saveData(); }
         }
-
-        function updateSalesOrder(id, index, newSO) {
+        function updateKeyCode(id, index, newVal) {
             const a = assignments.find(a => a.id === id);
-            if (a) { if(!a.sos) { a.sos = new Array(a.qty).fill(''); if(a.so) a.sos.fill(a.so); } a.sos[index] = newSO; saveData(); }
+            if (a) { if(!a.keyCodes) a.keyCodes = new Array(a.qty).fill(''); a.keyCodes[index] = newVal; saveData(); }
+        }
+        function updateSerialNumber(id, index, newVal) {
+            const a = assignments.find(a => a.id === id);
+            if (a) { if(!a.serials) a.serials = new Array(a.qty).fill(''); a.serials[index] = newVal; saveData(); }
+        }
+        function updateSalesOrder(id, index, newVal) {
+            const a = assignments.find(a => a.id === id);
+            if (a) { if(!a.sos) { a.sos = new Array(a.qty).fill(''); if(a.so) a.sos.fill(a.so); } a.sos[index] = newVal; saveData(); }
         }
 
         function updateQuantity(id, newQty) {
@@ -867,6 +879,15 @@
             const a = assignments.find(a => a.id === id);
             if (a) {
                 const oldQty = a.qty; a.qty = newQty;
+                
+                if(!a.versions) a.versions = new Array(oldQty).fill('');
+                if (newQty > oldQty) a.versions.push(...new Array(newQty - oldQty).fill(''));
+                else a.versions = a.versions.slice(0, newQty);
+                
+                if(!a.keyCodes) a.keyCodes = new Array(oldQty).fill('');
+                if (newQty > oldQty) a.keyCodes.push(...new Array(newQty - oldQty).fill(''));
+                else a.keyCodes = a.keyCodes.slice(0, newQty);
+                
                 if(!a.serials) a.serials = new Array(oldQty).fill('');
                 if (newQty > oldQty) a.serials.push(...new Array(newQty - oldQty).fill(''));
                 else a.serials = a.serials.slice(0, newQty);
@@ -874,6 +895,7 @@
                 if(!a.sos) { a.sos = new Array(oldQty).fill(''); if(a.so) a.sos.fill(a.so); }
                 if (newQty > oldQty) a.sos.push(...new Array(newQty - oldQty).fill(a.sos[0] || ''));
                 else a.sos = a.sos.slice(0, newQty);
+                
                 saveData();
             }
         }
@@ -887,6 +909,8 @@
                 
                 completedAssignments.push({
                     id: a.id + '-' + Date.now(), product: a.product,
+                    version: (a.versions && a.versions[index]) ? a.versions[index] : '',
+                    keyCode: (a.keyCodes && a.keyCodes[index]) ? a.keyCodes[index] : '',
                     serial: (a.serials && a.serials[index]) ? a.serials[index] : '',
                     so: (a.sos && a.sos[index]) ? a.sos[index] : '',
                     customer: a.customer, qty: 1, timestamp: a.timestamp,
@@ -894,7 +918,13 @@
                 });
                 
                 if(a.qty === 1) assignments.splice(aIdx, 1);
-                else { a.qty -= 1; if(a.serials) a.serials.splice(index, 1); if(a.sos) a.sos.splice(index, 1); }
+                else { 
+                    a.qty -= 1; 
+                    if(a.versions) a.versions.splice(index, 1);
+                    if(a.keyCodes) a.keyCodes.splice(index, 1);
+                    if(a.serials) a.serials.splice(index, 1); 
+                    if(a.sos) a.sos.splice(index, 1); 
+                }
                 saveData();
             }
         }
@@ -905,7 +935,13 @@
             if (aIdx > -1) {
                 const a = assignments[aIdx];
                 if(a.qty === 1) assignments.splice(aIdx, 1);
-                else { a.qty -= 1; if(a.serials) a.serials.splice(index, 1); if(a.sos) a.sos.splice(index, 1); }
+                else { 
+                    a.qty -= 1; 
+                    if(a.versions) a.versions.splice(index, 1);
+                    if(a.keyCodes) a.keyCodes.splice(index, 1);
+                    if(a.serials) a.serials.splice(index, 1); 
+                    if(a.sos) a.sos.splice(index, 1); 
+                }
                 saveData();
             }
         }
@@ -919,6 +955,8 @@
                 for(let i = 0; i < a.qty; i++) {
                     completedAssignments.push({
                         id: a.id + '-bulk-' + Date.now() + '-' + i, product: a.product,
+                        version: (a.versions && a.versions[i]) ? a.versions[i] : '',
+                        keyCode: (a.keyCodes && a.keyCodes[i]) ? a.keyCodes[i] : '',
                         serial: (a.serials && a.serials[i]) ? a.serials[i] : '',
                         so: (a.sos && a.sos[i]) ? a.sos[i] : '', customer: a.customer, qty: 1,
                         timestamp: a.timestamp, dateTimeStr: a.dateTimeStr, completedAtStr: new Date().toLocaleString()
@@ -934,13 +972,11 @@
                 if (aIdx > -1) { assignments.splice(aIdx, 1); saveData(); }
             }
         }
-        
-        // --- NEW: RENDER RECENT ASSIGNMENTS TABLE ---
+
         function renderRecentAssignments() {
             const recentBody = document.getElementById('assign-recent-table-body');
             if(!recentBody) return;
             recentBody.innerHTML = '';
-
             let sorted = [...assignments].sort((a, b) => (b.timestamp || parseInt(b.id)) - (a.timestamp || parseInt(a.id)));
             let top10 = sorted.slice(0, 10);
 
@@ -948,11 +984,14 @@
                 const tr = document.createElement('tr');
                 const displayDate = a.dateTimeStr || new Date(parseInt(a.id)).toLocaleString();
                 
+                let vVal = (a.versions && a.versions[0]) ? a.versions[0] : (a.version || '<span style="color:#888;">N/A</span>');
+                let kVal = (a.keyCodes && a.keyCodes[0]) ? a.keyCodes[0] : (a.keyCode || '<span style="color:#888;">N/A</span>');
                 let sVal = (a.serials && a.serials[0]) ? a.serials[0] : (a.serial || '<span style="color:#888;">N/A</span>');
                 let soVal = (a.sos && a.sos[0]) ? a.sos[0] : (a.so || '<span style="color:#888;">N/A</span>');
                 
-                // Add a small tag if there are multiple items hidden
                 if (a.qty > 1) {
+                    vVal += ` <span style="color:#888; font-size: 11px; margin-left: 5px;">(+${a.qty - 1} more)</span>`;
+                    kVal += ` <span style="color:#888; font-size: 11px; margin-left: 5px;">(+${a.qty - 1} more)</span>`;
                     sVal += ` <span style="color:#888; font-size: 11px; margin-left: 5px;">(+${a.qty - 1} more)</span>`;
                     soVal += ` <span style="color:#888; font-size: 11px; margin-left: 5px;">(+${a.qty - 1} more)</span>`;
                 }
@@ -960,6 +999,8 @@
                 tr.innerHTML = `
                     <td><small style="color: #555;">${displayDate}</small></td>
                     <td><strong>${a.product}</strong></td>
+                    <td>${vVal}</td>
+                    <td>${kVal}</td>
                     <td>${sVal}</td>
                     <td>${soVal}</td>
                     <td>${a.customer}</td>
@@ -1001,9 +1042,11 @@
 
             let filteredAssignments = sortedAssignments.filter(a => {
                 const displayDate = a.dateTimeStr || new Date(parseInt(a.id)).toLocaleString();
+                const versionMatch = a.versions ? a.versions.some(v => v.toLowerCase().includes(filterText)) : (a.version && a.version.toLowerCase().includes(filterText));
+                const keyMatch = a.keyCodes ? a.keyCodes.some(k => k.toLowerCase().includes(filterText)) : (a.keyCode && a.keyCode.toLowerCase().includes(filterText));
                 const serialMatch = a.serials ? a.serials.some(s => s.toLowerCase().includes(filterText)) : (a.serial && a.serial.toLowerCase().includes(filterText));
                 const soMatch = a.sos ? a.sos.some(s => s.toLowerCase().includes(filterText)) : (a.so && a.so.toLowerCase().includes(filterText));
-                return (a.product.toLowerCase().includes(filterText) || serialMatch || soMatch || a.customer.toLowerCase().includes(filterText) || displayDate.toLowerCase().includes(filterText));
+                return (a.product.toLowerCase().includes(filterText) || versionMatch || keyMatch || serialMatch || soMatch || a.customer.toLowerCase().includes(filterText) || displayDate.toLowerCase().includes(filterText));
             });
 
             let currentGroup = null;
@@ -1012,22 +1055,29 @@
                     let itemGroup = groupBy === 'so' ? ((a.sos && a.sos[0]) || a.so || 'Unknown') : (a[groupBy] || 'Unknown');
                     if (itemGroup !== currentGroup) {
                         currentGroup = itemGroup; const groupTr = document.createElement('tr');
-                        groupTr.innerHTML = `<td colspan="8" style="background-color: #d1ecf1; font-weight: bold; color: #0c5460;">${groupBy === 'customer' ? 'Customer' : (groupBy === 'so' ? 'Sales Order (SO)' : 'Product')}: ${currentGroup}</td>`;
+                        groupTr.innerHTML = `<td colspan="10" style="background-color: #d1ecf1; font-weight: bold; color: #0c5460;">${groupBy === 'customer' ? 'Customer' : (groupBy === 'so' ? 'Sales Order (SO)' : 'Product')}: ${currentGroup}</td>`;
                         assignBody.appendChild(groupTr);
                     }
                 }
 
                 const tr = document.createElement('tr');
                 const displayDate = a.dateTimeStr || new Date(parseInt(a.id)).toLocaleString();
+                
+                let currentVersions = a.versions || []; if(!a.versions && a.version) currentVersions = [a.version]; 
+                let currentKeyCodes = a.keyCodes || []; if(!a.keyCodes && a.keyCode) currentKeyCodes = [a.keyCode]; 
                 let currentSerials = a.serials || []; if(!a.serials && a.serial) currentSerials = [a.serial]; 
                 let currentSOs = a.sos || []; if(!a.sos && a.so) currentSOs = Array(a.qty).fill(a.so); 
                 
-                let serialHTML = ''; let soHTML = ''; let actionHTML = ''; let btnHTML = '';
+                let versionHTML = ''; let keyCodeHTML = ''; let serialHTML = ''; let soHTML = ''; let actionHTML = ''; let btnHTML = '';
                 let isExpanded = expandedAdminRows.has(a.id);
                 let displayStyle = isExpanded ? 'block' : 'none';
                 let batchStyle = isExpanded ? 'flex' : 'none';
                 let btnText = isExpanded ? '▲ Hide Details' : `▼ Show ${a.qty - 1} More`;
 
+                let vVal0 = currentVersions[0] || '';
+                versionHTML += `<input type="text" class="inline-input" style="display:block; margin-bottom:4px;" value="${vVal0}" onchange="updateVersion('${a.id}', 0, this.value)" placeholder="Ver 1...">`;
+                let kVal0 = currentKeyCodes[0] || '';
+                keyCodeHTML += `<input type="text" class="inline-input" style="display:block; margin-bottom:4px;" value="${kVal0}" onchange="updateKeyCode('${a.id}', 0, this.value)" placeholder="Key 1...">`;
                 let sVal0 = currentSerials[0] || '';
                 serialHTML += `<input type="text" class="inline-input" style="display:block; margin-bottom:4px;" value="${sVal0}" onchange="updateSerialNumber('${a.id}', 0, this.value)" placeholder="Serial 1...">`;
                 let soVal0 = currentSOs[0] || '';
@@ -1038,11 +1088,17 @@
                                </div>`;
 
                 if (a.qty > 1) {
+                    versionHTML += `<div id="admin-details-version-${a.id}" style="display: ${displayStyle};">`;
+                    keyCodeHTML += `<div id="admin-details-keycode-${a.id}" style="display: ${displayStyle};">`;
                     serialHTML += `<div id="admin-details-serial-${a.id}" style="display: ${displayStyle};">`;
                     soHTML += `<div id="admin-details-so-${a.id}" style="display: ${displayStyle};">`;
                     actionHTML += `<div id="admin-details-action-${a.id}" style="display: ${displayStyle};">`;
                     
                     for(let i=1; i < a.qty; i++) {
+                        let vVal = currentVersions[i] || '';
+                        versionHTML += `<input type="text" class="inline-input" style="display:block; margin-bottom:4px;" value="${vVal}" onchange="updateVersion('${a.id}', ${i}, this.value)" placeholder="Ver ${i+1}...">`;
+                        let kVal = currentKeyCodes[i] || '';
+                        keyCodeHTML += `<input type="text" class="inline-input" style="display:block; margin-bottom:4px;" value="${kVal}" onchange="updateKeyCode('${a.id}', ${i}, this.value)" placeholder="Key ${i+1}...">`;
                         let sVal = currentSerials[i] || '';
                         serialHTML += `<input type="text" class="inline-input" style="display:block; margin-bottom:4px;" value="${sVal}" onchange="updateSerialNumber('${a.id}', ${i}, this.value)" placeholder="Serial ${i+1}...">`;
                         let soVal = currentSOs[i] || '';
@@ -1052,7 +1108,7 @@
                                         <button class="delete-btn icon-btn" title="Delete this unit" onclick="deleteSingleUnit('${a.id}', ${i})">🗑️</button>
                                        </div>`;
                     }
-                    serialHTML += `</div>`; soHTML += `</div>`; actionHTML += `</div>`;
+                    versionHTML += `</div>`; keyCodeHTML += `</div>`; serialHTML += `</div>`; soHTML += `</div>`; actionHTML += `</div>`;
                     
                     btnHTML = `
                         <button id="admin-btn-toggle-${a.id}" class="toggle-btn" style="white-space: nowrap; width: 100%;" onclick="toggleAdminDetails('${a.id}', ${a.qty})">${btnText}</button>
@@ -1066,6 +1122,8 @@
                 tr.innerHTML = `
                     <td><small style="color: #555;">${displayDate}</small></td>
                     <td>${a.product}</td>
+                    <td>${versionHTML}</td>
+                    <td>${keyCodeHTML}</td>
                     <td>${serialHTML}</td>
                     <td>${soHTML}</td>
                     <td>${a.customer}</td>
