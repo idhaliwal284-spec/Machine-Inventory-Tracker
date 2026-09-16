@@ -245,14 +245,29 @@
                         <input type="number" id="admin-qty" placeholder="Qty" min="1" value="1" style="width: 80px; margin-bottom:0;" required oninput="generateDynamicInputs()">
                     </div>
                     
-                    <div style="margin: 10px 0; background-color: #f4f6f9; padding: 10px; border-radius: 4px; border: 1px solid #ccc;">
-                        <label style="font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 14px;">
-                            <input type="checkbox" id="admin-same-so" checked onchange="generateDynamicInputs()" style="margin:0; width: 16px; height: 16px;"> 
-                            Apply SAME Sales Order to all units
-                        </label>
+                    <!-- NEW: Side-by-Side Smart Toggles for Version & SO -->
+                    <div style="display: flex; gap: 15px; flex-wrap: wrap; margin: 15px 0;">
+                        
+                        <!-- Version Toggle Block -->
+                        <div style="background-color: #f4f6f9; padding: 10px; border-radius: 4px; border: 1px solid #ccc; flex: 1; min-width: 250px;">
+                            <label style="font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 14px; margin-bottom: 10px;">
+                                <input type="checkbox" id="admin-same-version" checked onchange="generateDynamicInputs()" style="margin:0; width: 16px; height: 16px;"> 
+                                Apply SAME Version to all units
+                            </label>
+                            <input type="text" id="admin-master-version" placeholder="Version (Optional)" style="display: block; width: 100%; box-sizing: border-box; margin: 0;">
+                        </div>
+
+                        <!-- Sales Order Toggle Block -->
+                        <div style="background-color: #f4f6f9; padding: 10px; border-radius: 4px; border: 1px solid #ccc; flex: 1; min-width: 250px;">
+                            <label style="font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 14px; margin-bottom: 10px;">
+                                <input type="checkbox" id="admin-same-so" checked onchange="generateDynamicInputs()" style="margin:0; width: 16px; height: 16px;"> 
+                                Apply SAME Sales Order to all units
+                            </label>
+                            <input type="text" id="admin-master-so" placeholder="Sales Order (Optional)" style="display: block; width: 100%; box-sizing: border-box; margin: 0;">
+                        </div>
+                        
                     </div>
                     
-                    <input type="text" id="admin-master-so" placeholder="Sales Order (Optional)" style="display: block; width: 100%; max-width: 300px;">
                     <div id="assign-dynamic-container" style="margin-top: 15px; display: flex; flex-direction: column;"></div>
                     <button type="submit" class="action-btn" style="margin-top: 15px; width: 100%; max-width: 200px;">Assign Unit(s)</button>
                 </form>
@@ -749,7 +764,7 @@
             container.innerHTML = '';
             PRODUCTS.forEach((p, index) => {
                 const div = document.createElement('div'); div.className = 'name-slot';
-                div.innerHTML = `<label>Slot ${index + 1}</label><input type="text" class="prod-name-input inline-input" style="width: 150px;" value="${p}">`;
+                div.innerHTML = `<label>Slot ${index + 1}</label><input type="text" class="prod-name-input inline-input" value="${p}">`;
                 container.appendChild(div);
             });
         }
@@ -758,7 +773,7 @@
             const container = document.getElementById('admin-product-names-list');
             const index = container.children.length;
             const div = document.createElement('div'); div.className = 'name-slot';
-            div.innerHTML = `<label>Slot ${index + 1}</label><input type="text" class="prod-name-input inline-input" style="width: 150px;" value="Product ${index + 1}">`;
+            div.innerHTML = `<label>Slot ${index + 1}</label><input type="text" class="prod-name-input inline-input" value="Product ${index + 1}">`;
             container.appendChild(div);
         }
 
@@ -803,8 +818,12 @@
             const qty = parseInt(document.getElementById('admin-qty').value) || 1;
             const container = document.getElementById('assign-dynamic-container');
             if(!container) return;
+            
             const isSameSo = document.getElementById('admin-same-so').checked;
             document.getElementById('admin-master-so').style.display = isSameSo ? 'block' : 'none';
+            
+            const isSameVersion = document.getElementById('admin-same-version').checked;
+            document.getElementById('admin-master-version').style.display = isSameVersion ? 'block' : 'none';
             
             const currentVersions = []; const currentKeyCodes = []; const currentSerials = []; const currentSOs = [];
             for(let i=0; i < container.children.length; i++) {
@@ -816,11 +835,19 @@
             
             container.innerHTML = '';
             for(let i=0; i < qty; i++) {
-                let rowHTML = `<div class="dynamic-row">
-                    <input type="text" class="inline-input" id="admin-version-${i}" value="${currentVersions[i] || ''}" placeholder="Version ${i+1} (Optional)">
-                    <input type="text" class="inline-input" id="admin-keycode-${i}" value="${currentKeyCodes[i] || ''}" placeholder="Key Code ${i+1} (Optional)">
-                    <input type="text" class="inline-input" id="admin-serial-${i}" value="${currentSerials[i] || ''}" placeholder="Serial ${i+1} (Optional)">`;
-                if (!isSameSo) rowHTML += `<input type="text" class="inline-input" id="admin-so-${i}" value="${currentSOs[i] || ''}" placeholder="Sales Order ${i+1} (Optional)">`;
+                let rowHTML = `<div class="dynamic-row">`;
+                
+                if (!isSameVersion) {
+                    rowHTML += `<input type="text" class="inline-input" id="admin-version-${i}" value="${currentVersions[i] || ''}" placeholder="Version ${i+1} (Optional)">`;
+                }
+                
+                rowHTML += `<input type="text" class="inline-input" id="admin-keycode-${i}" value="${currentKeyCodes[i] || ''}" placeholder="Key Code ${i+1} (Optional)">
+                            <input type="text" class="inline-input" id="admin-serial-${i}" value="${currentSerials[i] || ''}" placeholder="Serial ${i+1} (Optional)">`;
+                
+                if (!isSameSo) {
+                    rowHTML += `<input type="text" class="inline-input" id="admin-so-${i}" value="${currentSOs[i] || ''}" placeholder="Sales Order ${i+1} (Optional)">`;
+                }
+                
                 rowHTML += `</div>`; container.innerHTML += rowHTML;
             }
         }
@@ -829,14 +856,22 @@
             const product = document.getElementById('admin-assign-product').value;
             const customer = document.getElementById('admin-customer').value;
             const qty = parseInt(document.getElementById('admin-qty').value);
+            
             const isSameSo = document.getElementById('admin-same-so').checked;
             const masterSo = document.getElementById('admin-master-so').value;
+            
+            const isSameVersion = document.getElementById('admin-same-version').checked;
+            const masterVersion = document.getElementById('admin-master-version').value;
 
             const versions = []; const keyCodes = []; const serials = []; const sos = [];
             for(let i=0; i < qty; i++) {
-                const vInput = document.getElementById(`admin-version-${i}`); versions.push(vInput ? vInput.value : '');
+                
+                if (isSameVersion) versions.push(masterVersion);
+                else { const vInput = document.getElementById(`admin-version-${i}`); versions.push(vInput ? vInput.value : ''); }
+                
                 const kInput = document.getElementById(`admin-keycode-${i}`); keyCodes.push(kInput ? kInput.value : '');
                 const sInput = document.getElementById(`admin-serial-${i}`); serials.push(sInput ? sInput.value : '');
+                
                 if (isSameSo) sos.push(masterSo);
                 else { const soInput = document.getElementById(`admin-so-${i}`); sos.push(soInput ? soInput.value : ''); }
             }
@@ -850,6 +885,7 @@
             
             document.getElementById('assign-form').reset();
             document.getElementById('admin-same-so').checked = true; 
+            document.getElementById('admin-same-version').checked = true; 
             document.getElementById('admin-assign-product').value = product;
             generateDynamicInputs(); 
             alert("Order Assigned Successfully!");
@@ -1062,7 +1098,6 @@
 
                 const tr = document.createElement('tr');
                 const displayDate = a.dateTimeStr || new Date(parseInt(a.id)).toLocaleString();
-                
                 let currentVersions = a.versions || []; if(!a.versions && a.version) currentVersions = [a.version]; 
                 let currentKeyCodes = a.keyCodes || []; if(!a.keyCodes && a.keyCode) currentKeyCodes = [a.keyCode]; 
                 let currentSerials = a.serials || []; if(!a.serials && a.serial) currentSerials = [a.serial]; 
