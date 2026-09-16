@@ -34,104 +34,64 @@
         .login-box input { width: 100%; padding: 12px; margin-bottom: 15px; box-sizing: border-box; font-size: 16px; border: 1px solid #ccc; border-radius: 4px;}
         .login-box button { width: 100%; padding: 12px; background-color: var(--primary); color: white; border: none; border-radius: 4px; font-size: 16px; font-weight: bold; cursor: pointer; }
         .login-box button:hover { background-color: #004494; }
-        #app-container { display: none; } /* Hidden until logged in */
+        #app-container { display: none; } 
 
+        /* --- HEADER & NAVIGATION --- */
         .header {
-            background-color: var(--primary);
-            color: white;
-            padding: 15px 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 10px;
+            background-color: var(--primary); color: white; padding: 15px 20px;
+            display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;
         }
-        .header h1 {
-            margin: 0;
-            font-size: 20px;
-        }
+        .header h1 { margin: 0; font-size: 20px; }
         .nav-buttons button {
-            background-color: white;
-            color: var(--primary);
-            border: none;
-            padding: 8px 15px;
-            margin-left: 5px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: bold;
+            background-color: white; color: var(--primary); border: none; padding: 8px 15px;
+            margin-left: 5px; border-radius: 4px; cursor: pointer; font-weight: bold;
         }
-        .nav-buttons button:hover {
-            background-color: #ddd;
+        .nav-buttons button:hover { background-color: #ddd; }
+        
+        .container { padding: 20px; max-width: 1200px; margin: auto; }
+        
+        .tab-content { display: none; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .tab-content.active { display: block; }
+
+        /* --- BIG HOME BUTTONS --- */
+        .home-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
         }
-        .container {
-            padding: 20px;
-            max-width: 1200px;
-            margin: auto;
+        .big-btn {
+            background-color: white; border: 2px solid var(--primary); color: var(--primary);
+            padding: 40px 20px; font-size: 20px; font-weight: bold; border-radius: 12px;
+            cursor: pointer; transition: all 0.2s ease; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            display: flex; flex-direction: column; align-items: center; gap: 15px;
         }
-        .tab-content {
-            display: none;
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        .big-btn:hover {
+            background-color: var(--primary); color: white; transform: translateY(-5px); box-shadow: 0 8px 15px rgba(0,0,0,0.15);
         }
-        .tab-content.active {
-            display: block;
-        }
-        .control-group {
-            margin-bottom: 25px;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 15px;
-            align-items: flex-end;
-        }
-        select, input {
-            padding: 10px;
-            font-size: 14px;
-            border: 1px solid var(--border);
-            border-radius: 4px;
-            margin-right: 5px;
-            margin-bottom: 10px;
-            box-sizing: border-box;
-        }
-        button.action-btn {
-            background-color: var(--primary);
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            font-size: 14px;
-            border-radius: 4px;
-            cursor: pointer;
-        }
+        .big-btn .icon { font-size: 48px; }
+
+        /* --- FORMS & TABLES --- */
+        .control-group { display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end; margin-bottom: 25px; }
+        select, input { padding: 10px; font-size: 14px; border: 1px solid var(--border); border-radius: 4px; margin-right: 5px; margin-bottom: 10px; box-sizing: border-box; }
+        button.action-btn { background-color: var(--primary); color: white; border: none; padding: 10px 20px; font-size: 14px; border-radius: 4px; cursor: pointer; }
         button.action-btn:hover { background-color: #004494; }
-        button.add-btn {
-            background-color: #28a745; color: white; border: none; padding: 10px 20px;
-            font-size: 14px; border-radius: 4px; cursor: pointer; margin-bottom: 15px; display: block;
-        }
+        button.add-btn { background-color: #28a745; color: white; border: none; padding: 10px 20px; font-size: 14px; border-radius: 4px; cursor: pointer; margin-bottom: 15px; display: block; }
         button.add-btn:hover { background-color: #218838; }
         button.delete-btn { background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; }
         button.done-btn { background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; }
         button.done-btn:hover { background-color: #218838; }
-        .icon-btn {
-            width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 14px;
-        }
-        .toggle-btn {
-            background-color: #e2e6ea; color: #333; border: 1px solid #dae0e5; padding: 5px 10px;
-            font-size: 12px; font-weight: bold; border-radius: 4px; cursor: pointer; display: inline-block;
-        }
+        .icon-btn { width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+        .toggle-btn { background-color: #e2e6ea; color: #333; border: 1px solid #dae0e5; padding: 5px 10px; font-size: 12px; font-weight: bold; border-radius: 4px; cursor: pointer; display: inline-block; }
         .toggle-btn:hover { background-color: #d3d9df; }
-        .stats-grid {
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 30px;
-        }
+        
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 30px; }
         .stat-card { background-color: var(--secondary); border: 1px solid var(--border); border-radius: 8px; padding: 15px; text-align: center; }
         .stat-card h3 { margin: 0 0 10px 0; font-size: 16px; color: #666; }
         .stat-card .number { font-size: 36px; font-weight: bold; color: var(--primary); }
         .stat-card .number.forecast { color: #28a745; }
         
-        .table-responsive {
-            width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; margin-top: 15px;
-            border: 1px solid var(--border); border-radius: 4px;
-        }
+        .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; margin-top: 15px; border: 1px solid var(--border); border-radius: 4px; }
         table { width: 100%; min-width: 800px; border-collapse: collapse; }
         th, td { border: 1px solid var(--border); padding: 10px; text-align: left; vertical-align: top; font-size: 14px; }
         th { background-color: var(--secondary); white-space: nowrap; }
@@ -139,10 +99,7 @@
         .admin-section { border: 1px solid var(--border); padding: 15px; margin-bottom: 20px; border-radius: 8px; overflow-x: hidden; }
         .name-slot { display: inline-block; margin-right: 10px; margin-bottom: 10px; }
         .name-slot label { display: block; font-size: 12px; color: #666; margin-bottom: 4px; font-weight: bold; }
-        .inline-input {
-            padding: 6px; font-size: 13px; margin: 0; width: 100%; min-width: 110px; height: 32px;
-            box-sizing: border-box; border: 1px solid #aaa; border-radius: 4px;
-        }
+        .inline-input { padding: 6px; font-size: 13px; margin: 0; width: 100%; min-width: 110px; height: 32px; box-sizing: border-box; border: 1px solid #aaa; border-radius: 4px; }
         .search-bar { width: 100%; padding: 10px; font-size: 14px; border: 2px solid var(--primary); border-radius: 6px; margin-bottom: 10px; box-sizing: border-box; }
         .dynamic-row { display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
         .dynamic-row input { margin: 0; flex: 1; min-width: 150px; }
@@ -181,16 +138,44 @@
                     👤 <span id="user-display"></span>
                 </div>
                 <div class="nav-buttons">
-                    <button onclick="switchTab('dashboard')">Dashboard</button>
-                    <button id="btn-admin-tab" onclick="switchTab('admin')" style="display: none;">Admin</button>
+                    <!-- Clean, single Home button to return to the menu -->
+                    <button onclick="switchTab('home')">🏠 Home Menu</button>
                     <button onclick="logoutUser()" style="background-color: #dc3545; color: white;">Logout</button>
                 </div>
             </div>
         </div>
 
         <div class="container">
+            
+            <!-- 🏠 HOME MENU HUB -->
+            <div id="home" class="tab-content active" style="background: transparent; box-shadow: none; padding: 0;">
+                <h2 style="color: var(--primary); text-align: center; margin-bottom: 30px; font-size: 32px;">Welcome to Asset Tracker</h2>
+                <div class="home-grid">
+                    <button class="big-btn" onclick="switchTab('dashboard')">
+                        <span class="icon">📊</span>
+                        Dashboard Overview
+                    </button>
+                    <button class="big-btn" id="btn-home-assign" onclick="switchTab('assign')">
+                        <span class="icon">📦</span>
+                        Assign Machine
+                    </button>
+                    <button class="big-btn" id="btn-home-inventory" onclick="switchTab('inventory')">
+                        <span class="icon">⚙️</span>
+                        Machine Stock
+                    </button>
+                    <button class="big-btn" id="btn-home-records" onclick="switchTab('records')">
+                        <span class="icon">📋</span>
+                        Manage Records
+                    </button>
+                    <button class="big-btn" id="btn-home-users" onclick="switchTab('users')">
+                        <span class="icon">👥</span>
+                        Manage Users
+                    </button>
+                </div>
+            </div>
+
             <!-- DASHBOARD TAB -->
-            <div id="dashboard" class="tab-content active">
+            <div id="dashboard" class="tab-content">
                 <h2>Dashboard Overview</h2>
                 
                 <div style="margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #ccc;">
@@ -249,41 +234,42 @@
                 </div>
             </div>
 
-            <!-- ADMIN TAB -->
-            <div id="admin" class="tab-content">
-                <h2>Admin Control Panel</h2>
-                
-                <div id="section-assign" class="admin-section">
-                    <h3>1. Assign Order</h3>
-                    <form id="assign-form" onsubmit="event.preventDefault(); assignOrder();">
-                        <div style="display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap;">
-                            <select id="admin-assign-product" style="flex: 1; min-width: 150px; margin-bottom:0;" required></select>
-                            <input type="text" id="admin-customer" placeholder="Customer Name" style="flex: 1; min-width: 150px; margin-bottom:0;" required>
-                            <input type="number" id="admin-qty" placeholder="Qty" min="1" value="1" style="width: 80px; margin-bottom:0;" required oninput="generateDynamicInputs()">
-                        </div>
-                        
-                        <div style="margin: 10px 0; background-color: #f4f6f9; padding: 10px; border-radius: 4px; border: 1px solid #ccc;">
-                            <label style="font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 14px;">
-                                <input type="checkbox" id="admin-same-so" checked onchange="generateDynamicInputs()" style="margin:0; width: 16px; height: 16px;"> 
-                                Apply SAME Sales Order to all units
-                            </label>
-                        </div>
-                        
-                        <input type="text" id="admin-master-so" placeholder="Sales Order (Optional)" style="display: block; width: 100%; max-width: 300px;">
-                        <div id="assign-dynamic-container" style="margin-top: 15px; display: flex; flex-direction: column;"></div>
-                        <button type="submit" class="action-btn" style="margin-top: 15px; width: 100%; max-width: 200px;">Assign Unit(s)</button>
-                    </form>
-                </div>
+            <!-- ASSIGN TAB -->
+            <div id="assign" class="tab-content">
+                <h2>Assign Order</h2>
+                <form id="assign-form" onsubmit="event.preventDefault(); assignOrder();">
+                    <div style="display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap;">
+                        <select id="admin-assign-product" style="flex: 1; min-width: 150px; margin-bottom:0;" required></select>
+                        <input type="text" id="admin-customer" placeholder="Customer Name" style="flex: 1; min-width: 150px; margin-bottom:0;" required>
+                        <input type="number" id="admin-qty" placeholder="Qty" min="1" value="1" style="width: 80px; margin-bottom:0;" required oninput="generateDynamicInputs()">
+                    </div>
+                    
+                    <div style="margin: 10px 0; background-color: #f4f6f9; padding: 10px; border-radius: 4px; border: 1px solid #ccc;">
+                        <label style="font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 14px;">
+                            <input type="checkbox" id="admin-same-so" checked onchange="generateDynamicInputs()" style="margin:0; width: 16px; height: 16px;"> 
+                            Apply SAME Sales Order to all units
+                        </label>
+                    </div>
+                    
+                    <input type="text" id="admin-master-so" placeholder="Sales Order (Optional)" style="display: block; width: 100%; max-width: 300px;">
+                    <div id="assign-dynamic-container" style="margin-top: 15px; display: flex; flex-direction: column;"></div>
+                    <button type="submit" class="action-btn" style="margin-top: 15px; width: 100%; max-width: 200px;">Assign Unit(s)</button>
+                </form>
+            </div>
 
-                <div id="section-products" class="admin-section">
-                    <h3>2. Manage Product Names</h3>
+            <!-- INVENTORY & PRODUCTS TAB -->
+            <div id="inventory" class="tab-content">
+                <h2>Machine Stock</h2>
+                
+                <div class="admin-section" style="background-color: #f8f9fa;">
+                    <h3 style="margin-top: 0;">Manage Product Names</h3>
                     <div id="admin-product-names-list"></div>
                     <button type="button" class="add-btn" onclick="addProductSlot()">+ Add Another</button>
                     <button class="action-btn" onclick="saveProductNames()">Save Names</button>
                 </div>
 
-                <div id="section-inventory" class="admin-section">
-                    <h3>3. Manage Inventory (Qty on Hand)</h3>
+                <div class="admin-section">
+                    <h3 style="margin-top: 0;">Manage Inventory (Qty on Hand)</h3>
                     <p style="font-size: 13px; color: #666; margin-top: 0;">Add/Remove received stock.</p>
                     <div class="table-responsive">
                         <table>
@@ -301,77 +287,80 @@
                         </table>
                     </div>
                 </div>
+            </div>
 
-                <div id="section-records" class="admin-section">
-                    <h3>4. Manage Assignments</h3>
-                    <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px;">
-                        <input type="text" id="admin-filter" class="search-bar" style="flex: 1; min-width: 200px; margin:0;" placeholder="🔍 Search Date, Product, SO..." onkeyup="renderAdminTables()">
-                        <select id="admin-group" class="search-bar" style="width:auto; margin:0;" onchange="renderAdminTables()">
-                            <option value="none">Group By: None</option>
-                            <option value="product">Group By: Product</option>
-                            <option value="customer">Group By: Customer</option>
-                            <option value="so">Group By: SO</option>
-                        </select>
-                    </div>
-                    <div class="table-responsive">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Date / Time</th>
-                                    <th>Product</th>
-                                    <th>Serial Number(s)</th>
-                                    <th>Sales Order(s)</th>
-                                    <th>Customer</th>
-                                    <th>Qty</th>
-                                    <th>Details</th>
-                                    <th>Action</th>
-                                </tr>
-                            </thead>
-                            <tbody id="admin-assignments-table-body">
-                            </tbody>
-                        </table>
-                    </div>
+            <!-- RECORDS TAB -->
+            <div id="records" class="tab-content">
+                <h2>Manage Assignments</h2>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px;">
+                    <input type="text" id="admin-filter" class="search-bar" style="flex: 1; min-width: 200px; margin:0;" placeholder="🔍 Search Date, Product, SO..." onkeyup="renderAdminTables()">
+                    <select id="admin-group" class="search-bar" style="width:auto; margin:0;" onchange="renderAdminTables()">
+                        <option value="none">Group By: None</option>
+                        <option value="product">Group By: Product</option>
+                        <option value="customer">Group By: Customer</option>
+                        <option value="so">Group By: SO</option>
+                    </select>
                 </div>
-                
-                <div id="section-users" class="admin-section">
-                    <h3>5. Manage Users & Access Permissions</h3>
-                    <p style="font-size: 13px; color: #666; margin-top: 0;">Create new accounts for your team and assign their roles. (This section is only visible to Super Admins).</p>
-                    
-                    <div style="background: #f8f9fa; padding: 15px; border-radius: 6px; border: 1px solid #ddd; margin-bottom: 20px;">
-                        <h4 style="margin-top: 0;">Create New User Account</h4>
-                        <form id="new-user-form" onsubmit="event.preventDefault(); createNewUser();" style="display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-start;">
-                            <div style="flex: 1; min-width: 200px;">
-                                <input type="email" id="new-user-email" placeholder="Employee Email Address" required style="width: 100%;">
-                                <input type="text" id="new-user-pass" placeholder="Set Temporary Password" required style="width: 100%; margin-bottom: 0;">
-                            </div>
-                            <div style="flex: 1; min-width: 200px; background: white; padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
-                                <label class="perm-check"><input type="checkbox" id="perm-assign" checked> Can Assign Orders (Section 1)</label>
-                                <label class="perm-check"><input type="checkbox" id="perm-inv" checked> Can Update Inventory (Section 3)</label>
-                                <label class="perm-check"><input type="checkbox" id="perm-records" checked> Can Edit/Delete Records (Section 4)</label>
-                                <label class="perm-check" style="color: #dc3545;"><input type="checkbox" id="perm-admin"> <strong>Is Super Admin (Full Access)</strong></label>
-                            </div>
-                            <div style="width: 100%;">
-                                <button type="submit" class="action-btn">Create User Account</button>
-                            </div>
-                        </form>
-                    </div>
-
-                    <h4>Current Users List</h4>
-                    <div class="table-responsive">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>User Email</th>
-                                    <th>Permissions</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="users-table-body">
-                            </tbody>
-                        </table>
-                    </div>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Date / Time</th>
+                                <th>Product</th>
+                                <th>Serial Number(s)</th>
+                                <th>Sales Order(s)</th>
+                                <th>Customer</th>
+                                <th>Qty</th>
+                                <th>Details</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-assignments-table-body">
+                        </tbody>
+                    </table>
                 </div>
             </div>
+            
+            <!-- USERS TAB -->
+            <div id="users" class="tab-content">
+                <h2>Manage Users & Access Permissions</h2>
+                <p style="font-size: 13px; color: #666; margin-top: 0;">Create new accounts for your team and assign their roles.</p>
+                
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 6px; border: 1px solid #ddd; margin-bottom: 20px;">
+                    <h4 style="margin-top: 0;">Create New User Account</h4>
+                    <form id="new-user-form" onsubmit="event.preventDefault(); createNewUser();" style="display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-start;">
+                        <div style="flex: 1; min-width: 200px;">
+                            <input type="email" id="new-user-email" placeholder="Employee Email Address" required style="width: 100%;">
+                            <input type="text" id="new-user-pass" placeholder="Set Temporary Password" required style="width: 100%; margin-bottom: 0;">
+                        </div>
+                        <div style="flex: 1; min-width: 200px; background: white; padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
+                            <label class="perm-check"><input type="checkbox" id="perm-assign" checked> Can Assign Orders</label>
+                            <label class="perm-check"><input type="checkbox" id="perm-inv" checked> Can Update Machine Stock</label>
+                            <label class="perm-check"><input type="checkbox" id="perm-records" checked> Can Manage Records</label>
+                            <label class="perm-check" style="color: #dc3545; margin-top: 10px;"><input type="checkbox" id="perm-admin"> <strong>Is Super Admin (Full Access)</strong></label>
+                        </div>
+                        <div style="width: 100%;">
+                            <button type="submit" class="action-btn">Create User Account</button>
+                        </div>
+                    </form>
+                </div>
+
+                <h4>Current Users List</h4>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>User Email</th>
+                                <th>Permissions</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-table-body">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
         </div>
     </div>
 
@@ -414,6 +403,8 @@
                 document.getElementById('login-screen').style.display = 'none';
                 document.getElementById('app-container').style.display = 'block';
                 document.getElementById('user-display').innerText = user.email;
+                
+                switchTab('home'); // Automatically land on the new Home Hub
                 applyPermissionsUI();
             } else {
                 currentUser = null;
@@ -448,18 +439,11 @@
             
             const perms = userPermissions[currentUser.email] || {};
             
-            if (!perms.isAdmin && !perms.canAssign && !perms.canManageInv && !perms.canManageRecords) {
-                document.getElementById('btn-admin-tab').style.display = 'none';
-                if(document.getElementById('admin').classList.contains('active')) switchTab('dashboard');
-            } else {
-                document.getElementById('btn-admin-tab').style.display = 'inline-block';
-            }
-
-            document.getElementById('section-assign').style.display = perms.canAssign || perms.isAdmin ? 'block' : 'none';
-            document.getElementById('section-products').style.display = perms.isAdmin ? 'block' : 'none';
-            document.getElementById('section-inventory').style.display = perms.canManageInv || perms.isAdmin ? 'block' : 'none';
-            document.getElementById('section-records').style.display = perms.canManageRecords || perms.isAdmin ? 'block' : 'none';
-            document.getElementById('section-users').style.display = perms.isAdmin ? 'block' : 'none';
+            // Dynamic Grid Buttons - automatically hide what they aren't allowed to see
+            document.getElementById('btn-home-assign').style.display = perms.canAssign || perms.isAdmin ? 'flex' : 'none';
+            document.getElementById('btn-home-inventory').style.display = perms.canManageInv || perms.isAdmin ? 'flex' : 'none';
+            document.getElementById('btn-home-records').style.display = perms.canManageRecords || perms.isAdmin ? 'flex' : 'none';
+            document.getElementById('btn-home-users').style.display = perms.isAdmin ? 'flex' : 'none';
             
             renderUsersTable();
         }
@@ -468,29 +452,23 @@
         // 3. REAL-TIME CLOUD SYNC & AGGRESSIVE RECOVERY
         // ==========================================
         db.collection("tracker").doc("trackerData").onSnapshot((doc) => {
-            // Check laptop storage
             const localAssignments = JSON.parse(localStorage.getItem('asset_assignments')) || [];
             
-            // AGGRESSIVE OVERWRITE: If the laptop has data and we haven't forced a recovery yet, overwrite the cloud!
+            // AGGRESSIVE OVERWRITE RECOVERY
             if (localAssignments.length > 0 && !window.hasRecoveredData) {
                 console.log("FORCING RECOVERY FROM LOCAL MEMORY...");
-                
                 PRODUCTS = JSON.parse(localStorage.getItem('asset_products')) || Array.from({length: 9}, (_, i) => `Product ${i + 1}`);
                 inventory = JSON.parse(localStorage.getItem('asset_inventory')) || {};
                 assignments = localAssignments;
                 completedAssignments = JSON.parse(localStorage.getItem('asset_completed')) || [];
                 
-                // Preserve permissions if they exist in the cloud
-                if (doc.exists) {
-                    userPermissions = doc.data().userPermissions || {};
-                }
+                if (doc.exists) userPermissions = doc.data().userPermissions || {};
                 
-                window.hasRecoveredData = true; // Stop it from looping forever
-                saveData(); // Instantly push this rich laptop data into the cloud
+                window.hasRecoveredData = true;
+                saveData(); 
                 alert("Data successfully restored from your laptop memory to the cloud!");
                 
             } else if (doc.exists) {
-                // Standard loading (after recovery is complete)
                 const data = doc.data();
                 PRODUCTS = data.PRODUCTS || PRODUCTS;
                 inventory = data.inventory || {};
@@ -574,7 +552,7 @@
                 if(perms.isAdmin) permTags.push('<span style="color: #dc3545; font-weight: bold;">Super Admin</span>');
                 else {
                     if(perms.canAssign) permTags.push('Assign Orders');
-                    if(perms.canManageInv) permTags.push('Inventory');
+                    if(perms.canManageInv) permTags.push('Machine Stock');
                     if(perms.canManageRecords) permTags.push('Records');
                     if(permTags.length === 0) permTags.push('<em>Read Only (Dashboard)</em>');
                 }
@@ -596,8 +574,18 @@
         // 5. CORE APPLICATION LOGIC
         // ==========================================
         function switchTab(tabId) {
+            // Check security before switching (stops non-admins from manually typing function calls)
+            if (currentUser) {
+                const perms = userPermissions[currentUser.email] || {};
+                if (tabId === 'assign' && !perms.canAssign && !perms.isAdmin) return switchTab('home');
+                if (tabId === 'inventory' && !perms.canManageInv && !perms.isAdmin) return switchTab('home');
+                if (tabId === 'records' && !perms.canManageRecords && !perms.isAdmin) return switchTab('home');
+                if (tabId === 'users' && !perms.isAdmin) return switchTab('home');
+            }
+            
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
             document.getElementById(tabId).classList.add('active');
+            
             if (tabId === 'dashboard') updateDashboard();
         }
 
@@ -745,7 +733,7 @@
             container.innerHTML = '';
             PRODUCTS.forEach((p, index) => {
                 const div = document.createElement('div'); div.className = 'name-slot';
-                div.innerHTML = `<label>Slot ${index + 1}</label><input type="text" class="prod-name-input inline-input" style="width: 150px;" value="${p}">`;
+                div.innerHTML = `<label>Slot ${index + 1}</label><input type="text" class="prod-name-input inline-input" value="${p}">`;
                 container.appendChild(div);
             });
         }
@@ -754,7 +742,7 @@
             const container = document.getElementById('admin-product-names-list');
             const index = container.children.length;
             const div = document.createElement('div'); div.className = 'name-slot';
-            div.innerHTML = `<label>Slot ${index + 1}</label><input type="text" class="prod-name-input inline-input" style="width: 150px;" value="Product ${index + 1}">`;
+            div.innerHTML = `<label>Slot ${index + 1}</label><input type="text" class="prod-name-input inline-input" value="Product ${index + 1}">`;
             container.appendChild(div);
         }
 
