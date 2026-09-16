@@ -138,7 +138,6 @@
                     👤 <span id="user-display"></span>
                 </div>
                 <div class="nav-buttons">
-                    <!-- Clean, single Home button to return to the menu -->
                     <button onclick="switchTab('home')">🏠 Home Menu</button>
                     <button onclick="logoutUser()" style="background-color: #dc3545; color: white;">Logout</button>
                 </div>
@@ -255,6 +254,27 @@
                     <div id="assign-dynamic-container" style="margin-top: 15px; display: flex; flex-direction: column;"></div>
                     <button type="submit" class="action-btn" style="margin-top: 15px; width: 100%; max-width: 200px;">Assign Unit(s)</button>
                 </form>
+
+                <!-- RECENT ASSIGNMENTS HISTORY TABLE -->
+                <div style="margin-top: 40px; border-top: 2px solid #eee; padding-top: 20px;">
+                    <h3 style="color: var(--primary);">Recent Assignments (Last 10)</h3>
+                    <div class="table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Date / Time</th>
+                                    <th>Product</th>
+                                    <th>Serial Number</th>
+                                    <th>Sales Order</th>
+                                    <th>Customer</th>
+                                    <th>Qty</th>
+                                </tr>
+                            </thead>
+                            <tbody id="assign-recent-table-body">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
 
             <!-- INVENTORY & PRODUCTS TAB -->
@@ -404,7 +424,7 @@
                 document.getElementById('app-container').style.display = 'block';
                 document.getElementById('user-display').innerText = user.email;
                 
-                switchTab('home'); // Automatically land on the new Home Hub
+                switchTab('home'); 
                 applyPermissionsUI();
             } else {
                 currentUser = null;
@@ -439,7 +459,6 @@
             
             const perms = userPermissions[currentUser.email] || {};
             
-            // Dynamic Grid Buttons - automatically hide what they aren't allowed to see
             document.getElementById('btn-home-assign').style.display = perms.canAssign || perms.isAdmin ? 'flex' : 'none';
             document.getElementById('btn-home-inventory').style.display = perms.canManageInv || perms.isAdmin ? 'flex' : 'none';
             document.getElementById('btn-home-records').style.display = perms.canManageRecords || perms.isAdmin ? 'flex' : 'none';
@@ -449,12 +468,11 @@
         }
 
         // ==========================================
-        // 3. REAL-TIME CLOUD SYNC & AGGRESSIVE RECOVERY
+        // 3. REAL-TIME CLOUD SYNC & AUTO-RECOVERY
         // ==========================================
         db.collection("tracker").doc("trackerData").onSnapshot((doc) => {
             const localAssignments = JSON.parse(localStorage.getItem('asset_assignments')) || [];
             
-            // AGGRESSIVE OVERWRITE RECOVERY
             if (localAssignments.length > 0 && !window.hasRecoveredData) {
                 console.log("FORCING RECOVERY FROM LOCAL MEMORY...");
                 PRODUCTS = JSON.parse(localStorage.getItem('asset_products')) || Array.from({length: 9}, (_, i) => `Product ${i + 1}`);
@@ -489,6 +507,7 @@
             }
             updateDashboard();
             renderAdminTables();
+            renderRecentAssignments(); // Update the new recent table
             applyPermissionsUI(); 
         });
 
@@ -574,7 +593,6 @@
         // 5. CORE APPLICATION LOGIC
         // ==========================================
         function switchTab(tabId) {
-            // Check security before switching (stops non-admins from manually typing function calls)
             if (currentUser) {
                 const perms = userPermissions[currentUser.email] || {};
                 if (tabId === 'assign' && !perms.canAssign && !perms.isAdmin) return switchTab('home');
@@ -915,6 +933,40 @@
                 const aIdx = assignments.findIndex(a => a.id === id);
                 if (aIdx > -1) { assignments.splice(aIdx, 1); saveData(); }
             }
+        }
+        
+        // --- NEW: RENDER RECENT ASSIGNMENTS TABLE ---
+        function renderRecentAssignments() {
+            const recentBody = document.getElementById('assign-recent-table-body');
+            if(!recentBody) return;
+            recentBody.innerHTML = '';
+
+            let sorted = [...assignments].sort((a, b) => (b.timestamp || parseInt(b.id)) - (a.timestamp || parseInt(a.id)));
+            let top10 = sorted.slice(0, 10);
+
+            top10.forEach(a => {
+                const tr = document.createElement('tr');
+                const displayDate = a.dateTimeStr || new Date(parseInt(a.id)).toLocaleString();
+                
+                let sVal = (a.serials && a.serials[0]) ? a.serials[0] : (a.serial || '<span style="color:#888;">N/A</span>');
+                let soVal = (a.sos && a.sos[0]) ? a.sos[0] : (a.so || '<span style="color:#888;">N/A</span>');
+                
+                // Add a small tag if there are multiple items hidden
+                if (a.qty > 1) {
+                    sVal += ` <span style="color:#888; font-size: 11px; margin-left: 5px;">(+${a.qty - 1} more)</span>`;
+                    soVal += ` <span style="color:#888; font-size: 11px; margin-left: 5px;">(+${a.qty - 1} more)</span>`;
+                }
+
+                tr.innerHTML = `
+                    <td><small style="color: #555;">${displayDate}</small></td>
+                    <td><strong>${a.product}</strong></td>
+                    <td>${sVal}</td>
+                    <td>${soVal}</td>
+                    <td>${a.customer}</td>
+                    <td><strong>${a.qty}</strong></td>
+                `;
+                recentBody.appendChild(tr);
+            });
         }
 
         function renderAdminTables() {
