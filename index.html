@@ -100,13 +100,16 @@
         .name-slot { display: inline-block; margin-right: 10px; margin-bottom: 10px; }
         .name-slot label { display: block; font-size: 12px; color: #666; margin-bottom: 4px; font-weight: bold; }
         .inline-input { padding: 6px; font-size: 13px; margin: 0; width: 100%; min-width: 100px; height: 32px; box-sizing: border-box; border: 1px solid #aaa; border-radius: 4px; }
+        .inline-input:read-only { background-color: #e9ecef; color: #6c757d; border-color: #ddd; cursor: not-allowed; }
+        
         .search-bar { width: 100%; padding: 10px; font-size: 14px; border: 2px solid var(--primary); border-radius: 6px; margin-bottom: 10px; box-sizing: border-box; }
         .dynamic-row { display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
         .dynamic-row input { margin: 0; flex: 1; min-width: 130px; }
         .batch-actions-row { display: flex; gap: 5px; margin-top: 5px; border-top: 1px solid #ddd; padding-top: 8px; }
         
-        .perm-check { display: flex; align-items: center; gap: 5px; margin-bottom: 8px; font-size: 14px; cursor: pointer; }
+        .perm-check { display: flex; align-items: center; gap: 5px; font-size: 14px; cursor: pointer; }
         .perm-check input { margin: 0; width: 16px; height: 16px; cursor: pointer;}
+        .perm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     </style>
 
     <!-- FIREBASE SCRIPTS -->
@@ -245,10 +248,7 @@
                         <input type="number" id="admin-qty" placeholder="Qty" min="1" value="1" style="width: 80px; margin-bottom:0;" required oninput="generateDynamicInputs()">
                     </div>
                     
-                    <!-- NEW: Side-by-Side Smart Toggles for Version & SO -->
                     <div style="display: flex; gap: 15px; flex-wrap: wrap; margin: 15px 0;">
-                        
-                        <!-- Version Toggle Block -->
                         <div style="background-color: #f4f6f9; padding: 10px; border-radius: 4px; border: 1px solid #ccc; flex: 1; min-width: 250px;">
                             <label style="font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 14px; margin-bottom: 10px;">
                                 <input type="checkbox" id="admin-same-version" checked onchange="generateDynamicInputs()" style="margin:0; width: 16px; height: 16px;"> 
@@ -257,7 +257,6 @@
                             <input type="text" id="admin-master-version" placeholder="Version (Optional)" style="display: block; width: 100%; box-sizing: border-box; margin: 0;">
                         </div>
 
-                        <!-- Sales Order Toggle Block -->
                         <div style="background-color: #f4f6f9; padding: 10px; border-radius: 4px; border: 1px solid #ccc; flex: 1; min-width: 250px;">
                             <label style="font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 14px; margin-bottom: 10px;">
                                 <input type="checkbox" id="admin-same-so" checked onchange="generateDynamicInputs()" style="margin:0; width: 16px; height: 16px;"> 
@@ -265,7 +264,6 @@
                             </label>
                             <input type="text" id="admin-master-so" placeholder="Sales Order (Optional)" style="display: block; width: 100%; box-sizing: border-box; margin: 0;">
                         </div>
-                        
                     </div>
                     
                     <div id="assign-dynamic-container" style="margin-top: 15px; display: flex; flex-direction: column;"></div>
@@ -299,14 +297,14 @@
             <div id="inventory" class="tab-content">
                 <h2>Machine Stock</h2>
                 
-                <div class="admin-section" style="background-color: #f8f9fa;">
+                <div id="section-products" class="admin-section" style="background-color: #f8f9fa;">
                     <h3 style="margin-top: 0;">Manage Product Names</h3>
                     <div id="admin-product-names-list"></div>
                     <button type="button" class="add-btn" onclick="addProductSlot()">+ Add Another</button>
                     <button class="action-btn" onclick="saveProductNames()">Save Names</button>
                 </div>
 
-                <div class="admin-section">
+                <div id="section-inventory" class="admin-section">
                     <h3 style="margin-top: 0;">Manage Inventory (Qty on Hand)</h3>
                     <p style="font-size: 13px; color: #666; margin-top: 0;">Add/Remove received stock.</p>
                     <div class="table-responsive">
@@ -364,7 +362,7 @@
             <!-- USERS TAB -->
             <div id="users" class="tab-content">
                 <h2>Manage Users & Access Permissions</h2>
-                <p style="font-size: 13px; color: #666; margin-top: 0;">Create new accounts for your team and assign their roles.</p>
+                <p style="font-size: 13px; color: #666; margin-top: 0;">Create new accounts for your team and assign their specific roles.</p>
                 
                 <div style="background: #f8f9fa; padding: 15px; border-radius: 6px; border: 1px solid #ddd; margin-bottom: 20px;">
                     <h4 style="margin-top: 0;">Create New User Account</h4>
@@ -373,12 +371,21 @@
                             <input type="email" id="new-user-email" placeholder="Employee Email Address" required style="width: 100%;">
                             <input type="text" id="new-user-pass" placeholder="Set Temporary Password" required style="width: 100%; margin-bottom: 0;">
                         </div>
-                        <div style="flex: 1; min-width: 200px; background: white; padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
-                            <label class="perm-check"><input type="checkbox" id="perm-assign" checked> Can Assign Orders</label>
-                            <label class="perm-check"><input type="checkbox" id="perm-inv" checked> Can Update Machine Stock</label>
-                            <label class="perm-check"><input type="checkbox" id="perm-records" checked> Can Manage Records</label>
-                            <label class="perm-check" style="color: #dc3545; margin-top: 10px;"><input type="checkbox" id="perm-admin"> <strong>Is Super Admin (Full Access)</strong></label>
+                        
+                        <div style="flex: 2; min-width: 300px; background: white; padding: 15px; border: 1px solid #ccc; border-radius: 4px;">
+                            <strong style="display:block; margin-bottom: 10px; color: var(--primary);">Micro-Permissions Selection:</strong>
+                            <div class="perm-grid">
+                                <label class="perm-check"><input type="checkbox" id="perm-assign" checked> Assign Machines</label>
+                                <label class="perm-check"><input type="checkbox" id="perm-view-records" checked> View Records Tab</label>
+                                <label class="perm-check"><input type="checkbox" id="perm-add-stock"> Update Stock Qty</label>
+                                <label class="perm-check"><input type="checkbox" id="perm-edit-records"> Edit Records (SN/SO)</label>
+                                <label class="perm-check"><input type="checkbox" id="perm-manage-names"> Manage Product Names</label>
+                                <label class="perm-check"><input type="checkbox" id="perm-mark-done"> Mark as Done (✔️)</label>
+                                <label class="perm-check"><input type="checkbox" id="perm-admin" style="accent-color: #dc3545;"> <strong style="color:#dc3545;">Super Admin</strong></label>
+                                <label class="perm-check"><input type="checkbox" id="perm-delete-records"> Delete Records (🗑️)</label>
+                            </div>
                         </div>
+                        
                         <div style="width: 100%;">
                             <button type="submit" class="action-btn">Create User Account</button>
                         </div>
@@ -465,16 +472,24 @@
         function applyPermissionsUI() {
             if (!currentUser) return;
             if (Object.keys(userPermissions).length === 0) {
-                userPermissions[currentUser.email] = { isAdmin: true, canAssign: true, canManageInv: true, canManageRecords: true };
+                userPermissions[currentUser.email] = { isAdmin: true, canAssign: true, canManageNames: true, canAddStock: true, canViewRecords: true, canEditRecords: true, canMarkDone: true, canDeleteRecords: true };
                 saveData();
             }
+            
             const perms = userPermissions[currentUser.email] || {};
             
+            // Hide/Show Home Screen Grid Buttons
             document.getElementById('btn-home-assign').style.display = perms.canAssign || perms.isAdmin ? 'flex' : 'none';
-            document.getElementById('btn-home-inventory').style.display = perms.canManageInv || perms.isAdmin ? 'flex' : 'none';
-            document.getElementById('btn-home-records').style.display = perms.canManageRecords || perms.isAdmin ? 'flex' : 'none';
+            document.getElementById('btn-home-inventory').style.display = perms.canAddStock || perms.canManageNames || perms.isAdmin ? 'flex' : 'none';
+            document.getElementById('btn-home-records').style.display = perms.canViewRecords || perms.isAdmin ? 'flex' : 'none';
             document.getElementById('btn-home-users').style.display = perms.isAdmin ? 'flex' : 'none';
+            
+            // Hide/Show Internal Sections
+            document.getElementById('section-products').style.display = perms.canManageNames || perms.isAdmin ? 'block' : 'none';
+            document.getElementById('section-inventory').style.display = perms.canAddStock || perms.isAdmin ? 'block' : 'none';
+            
             renderUsersTable();
+            renderAdminTables(); // Force re-render of inputs based on new edit permissions
         }
 
         // ==========================================
@@ -500,7 +515,7 @@
             }
             
             if (Object.keys(userPermissions).length === 0 && currentUser) {
-                userPermissions[currentUser.email] = { isAdmin: true, canAssign: true, canManageInv: true, canManageRecords: true };
+                userPermissions[currentUser.email] = { isAdmin: true, canAssign: true, canManageNames: true, canAddStock: true, canViewRecords: true, canEditRecords: true, canMarkDone: true, canDeleteRecords: true };
                 saveData();
             }
             
@@ -525,16 +540,21 @@
         function createNewUser() {
             const email = document.getElementById('new-user-email').value.trim().toLowerCase();
             const pass = document.getElementById('new-user-pass').value;
-            const canAssign = document.getElementById('perm-assign').checked;
-            const canManageInv = document.getElementById('perm-inv').checked;
-            const canManageRecords = document.getElementById('perm-records').checked;
+            
             const isAdmin = document.getElementById('perm-admin').checked;
+            const canAssign = document.getElementById('perm-assign').checked;
+            const canManageNames = document.getElementById('perm-manage-names').checked;
+            const canAddStock = document.getElementById('perm-add-stock').checked;
+            const canViewRecords = document.getElementById('perm-view-records').checked;
+            const canEditRecords = document.getElementById('perm-edit-records').checked;
+            const canMarkDone = document.getElementById('perm-mark-done').checked;
+            const canDeleteRecords = document.getElementById('perm-delete-records').checked;
 
             if(!email || !pass) return;
             secondaryApp.auth().createUserWithEmailAndPassword(email, pass)
                 .then(() => {
                     secondaryApp.auth().signOut();
-                    userPermissions[email] = { isAdmin, canAssign, canManageInv, canManageRecords };
+                    userPermissions[email] = { isAdmin, canAssign, canManageNames, canAddStock, canViewRecords, canEditRecords, canMarkDone, canDeleteRecords };
                     saveData(); alert(`Success! Account created for ${email}.`);
                     document.getElementById('new-user-form').reset();
                 }).catch(err => alert("Error creating user: " + err.message));
@@ -561,9 +581,13 @@
                 let permTags = [];
                 if(perms.isAdmin) permTags.push('<span style="color: #dc3545; font-weight: bold;">Super Admin</span>');
                 else {
-                    if(perms.canAssign) permTags.push('Assign Orders');
-                    if(perms.canManageInv) permTags.push('Machine Stock');
-                    if(perms.canManageRecords) permTags.push('Records');
+                    if(perms.canAssign) permTags.push('Assign');
+                    if(perms.canManageNames) permTags.push('Names');
+                    if(perms.canAddStock) permTags.push('Stock');
+                    if(perms.canViewRecords) permTags.push('ViewRec');
+                    if(perms.canEditRecords) permTags.push('EditRec');
+                    if(perms.canMarkDone) permTags.push('Done');
+                    if(perms.canDeleteRecords) permTags.push('Delete');
                     if(permTags.length === 0) permTags.push('<em>Read Only (Dashboard)</em>');
                 }
                 const tr = document.createElement('tr');
@@ -583,9 +607,13 @@
         function switchTab(tabId) {
             if (currentUser && tabId !== 'home') {
                 const perms = userPermissions[currentUser.email] || {};
+                // Determine old permissions mapping fallback in case of older records
+                const hasInvPerms = perms.canAddStock || perms.canManageNames || perms.canManageInv || perms.isAdmin;
+                const hasRecPerms = perms.canViewRecords || perms.canManageRecords || perms.isAdmin;
+                
                 if (tabId === 'assign' && !perms.canAssign && !perms.isAdmin) return switchTab('home');
-                if (tabId === 'inventory' && !perms.canManageInv && !perms.isAdmin) return switchTab('home');
-                if (tabId === 'records' && !perms.canManageRecords && !perms.isAdmin) return switchTab('home');
+                if (tabId === 'inventory' && !hasInvPerms) return switchTab('home');
+                if (tabId === 'records' && !hasRecPerms) return switchTab('home');
                 if (tabId === 'users' && !perms.isAdmin) return switchTab('home');
             }
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
@@ -761,10 +789,14 @@
         function renderProductNames() {
             const container = document.getElementById('admin-product-names-list');
             if(!container) return;
+            const perms = (currentUser && userPermissions[currentUser.email]) ? userPermissions[currentUser.email] : {};
+            const canEdit = perms.isAdmin || perms.canManageNames;
+            
             container.innerHTML = '';
             PRODUCTS.forEach((p, index) => {
                 const div = document.createElement('div'); div.className = 'name-slot';
-                div.innerHTML = `<label>Slot ${index + 1}</label><input type="text" class="prod-name-input inline-input" value="${p}">`;
+                const readOnlyAttr = canEdit ? '' : 'readonly style="background-color: #e9ecef;"';
+                div.innerHTML = `<label>Slot ${index + 1}</label><input type="text" class="prod-name-input inline-input" value="${p}" ${readOnlyAttr}>`;
                 container.appendChild(div);
             });
         }
@@ -1050,6 +1082,13 @@
             const invBody = document.getElementById('admin-inv-table-body');
             if(!invBody) return;
             invBody.innerHTML = '';
+            
+            const perms = (currentUser && userPermissions[currentUser.email]) ? userPermissions[currentUser.email] : {};
+            const isAd = perms.isAdmin;
+            const canEditRec = isAd || perms.canEditRecords;
+            const canDone = isAd || perms.canMarkDone;
+            const canDel = isAd || perms.canDeleteRecords;
+
             PRODUCTS.forEach((p, index) => {
                 const currentQty = inventory[p] || 0;
                 const tr = document.createElement('tr');
@@ -1109,18 +1148,21 @@
                 let batchStyle = isExpanded ? 'flex' : 'none';
                 let btnText = isExpanded ? '▲ Hide Details' : `▼ Show ${a.qty - 1} More`;
 
+                const readOnlyAttr = canEditRec ? '' : 'readonly style="background-color: #e9ecef; color: #6c757d; border-color: #ddd;"';
+
                 let vVal0 = currentVersions[0] || '';
-                versionHTML += `<input type="text" class="inline-input" style="display:block; margin-bottom:4px;" value="${vVal0}" onchange="updateVersion('${a.id}', 0, this.value)" placeholder="Ver 1...">`;
+                versionHTML += `<input type="text" class="inline-input" style="display:block; margin-bottom:4px;" value="${vVal0}" ${canEditRec ? `onchange="updateVersion('${a.id}', 0, this.value)"` : ''} placeholder="Ver 1..." ${readOnlyAttr}>`;
                 let kVal0 = currentKeyCodes[0] || '';
-                keyCodeHTML += `<input type="text" class="inline-input" style="display:block; margin-bottom:4px;" value="${kVal0}" onchange="updateKeyCode('${a.id}', 0, this.value)" placeholder="Key 1...">`;
+                keyCodeHTML += `<input type="text" class="inline-input" style="display:block; margin-bottom:4px;" value="${kVal0}" ${canEditRec ? `onchange="updateKeyCode('${a.id}', 0, this.value)"` : ''} placeholder="Key 1..." ${readOnlyAttr}>`;
                 let sVal0 = currentSerials[0] || '';
-                serialHTML += `<input type="text" class="inline-input" style="display:block; margin-bottom:4px;" value="${sVal0}" onchange="updateSerialNumber('${a.id}', 0, this.value)" placeholder="Serial 1...">`;
+                serialHTML += `<input type="text" class="inline-input" style="display:block; margin-bottom:4px;" value="${sVal0}" ${canEditRec ? `onchange="updateSerialNumber('${a.id}', 0, this.value)"` : ''} placeholder="Serial 1..." ${readOnlyAttr}>`;
                 let soVal0 = currentSOs[0] || '';
-                soHTML += `<input type="text" class="inline-input" style="display:block; margin-bottom:4px;" value="${soVal0}" onchange="updateSalesOrder('${a.id}', 0, this.value)" placeholder="SO 1...">`;
-                actionHTML += `<div style="display: flex; gap: 5px; height: 32px; margin-bottom: 4px;">
-                                <button class="done-btn icon-btn" title="Mark this unit as done" onclick="completeSingleUnit('${a.id}', 0)">✔️</button>
-                                <button class="delete-btn icon-btn" title="Delete this unit" onclick="deleteSingleUnit('${a.id}', 0)">🗑️</button>
-                               </div>`;
+                soHTML += `<input type="text" class="inline-input" style="display:block; margin-bottom:4px;" value="${soVal0}" ${canEditRec ? `onchange="updateSalesOrder('${a.id}', 0, this.value)"` : ''} placeholder="SO 1..." ${readOnlyAttr}>`;
+                
+                actionHTML += `<div style="display: flex; gap: 5px; height: 32px; margin-bottom: 4px;">`;
+                if(canDone) actionHTML += `<button class="done-btn icon-btn" title="Mark this unit as done" onclick="completeSingleUnit('${a.id}', 0)">✔️</button>`;
+                if(canDel) actionHTML += `<button class="delete-btn icon-btn" title="Delete this unit" onclick="deleteSingleUnit('${a.id}', 0)">🗑️</button>`;
+                actionHTML += `</div>`;
 
                 if (a.qty > 1) {
                     versionHTML += `<div id="admin-details-version-${a.id}" style="display: ${displayStyle};">`;
@@ -1131,27 +1173,28 @@
                     
                     for(let i=1; i < a.qty; i++) {
                         let vVal = currentVersions[i] || '';
-                        versionHTML += `<input type="text" class="inline-input" style="display:block; margin-bottom:4px;" value="${vVal}" onchange="updateVersion('${a.id}', ${i}, this.value)" placeholder="Ver ${i+1}...">`;
+                        versionHTML += `<input type="text" class="inline-input" style="display:block; margin-bottom:4px;" value="${vVal}" ${canEditRec ? `onchange="updateVersion('${a.id}', ${i}, this.value)"` : ''} placeholder="Ver ${i+1}..." ${readOnlyAttr}>`;
                         let kVal = currentKeyCodes[i] || '';
-                        keyCodeHTML += `<input type="text" class="inline-input" style="display:block; margin-bottom:4px;" value="${kVal}" onchange="updateKeyCode('${a.id}', ${i}, this.value)" placeholder="Key ${i+1}...">`;
+                        keyCodeHTML += `<input type="text" class="inline-input" style="display:block; margin-bottom:4px;" value="${kVal}" ${canEditRec ? `onchange="updateKeyCode('${a.id}', ${i}, this.value)"` : ''} placeholder="Key ${i+1}..." ${readOnlyAttr}>`;
                         let sVal = currentSerials[i] || '';
-                        serialHTML += `<input type="text" class="inline-input" style="display:block; margin-bottom:4px;" value="${sVal}" onchange="updateSerialNumber('${a.id}', ${i}, this.value)" placeholder="Serial ${i+1}...">`;
+                        serialHTML += `<input type="text" class="inline-input" style="display:block; margin-bottom:4px;" value="${sVal}" ${canEditRec ? `onchange="updateSerialNumber('${a.id}', ${i}, this.value)"` : ''} placeholder="Serial ${i+1}..." ${readOnlyAttr}>`;
                         let soVal = currentSOs[i] || '';
-                        soHTML += `<input type="text" class="inline-input" style="display:block; margin-bottom:4px;" value="${soVal}" onchange="updateSalesOrder('${a.id}', ${i}, this.value)" placeholder="SO ${i+1}...">`;
-                        actionHTML += `<div style="display: flex; gap: 5px; height: 32px; margin-bottom: 4px;">
-                                        <button class="done-btn icon-btn" title="Mark this unit as done" onclick="completeSingleUnit('${a.id}', ${i})">✔️</button>
-                                        <button class="delete-btn icon-btn" title="Delete this unit" onclick="deleteSingleUnit('${a.id}', ${i})">🗑️</button>
-                                       </div>`;
+                        soHTML += `<input type="text" class="inline-input" style="display:block; margin-bottom:4px;" value="${soVal}" ${canEditRec ? `onchange="updateSalesOrder('${a.id}', ${i}, this.value)"` : ''} placeholder="SO ${i+1}..." ${readOnlyAttr}>`;
+                        
+                        actionHTML += `<div style="display: flex; gap: 5px; height: 32px; margin-bottom: 4px;">`;
+                        if(canDone) actionHTML += `<button class="done-btn icon-btn" title="Mark this unit as done" onclick="completeSingleUnit('${a.id}', ${i})">✔️</button>`;
+                        if(canDel) actionHTML += `<button class="delete-btn icon-btn" title="Delete this unit" onclick="deleteSingleUnit('${a.id}', ${i})">🗑️</button>`;
+                        actionHTML += `</div>`;
                     }
                     versionHTML += `</div>`; keyCodeHTML += `</div>`; serialHTML += `</div>`; soHTML += `</div>`; actionHTML += `</div>`;
                     
                     btnHTML = `
                         <button id="admin-btn-toggle-${a.id}" class="toggle-btn" style="white-space: nowrap; width: 100%;" onclick="toggleAdminDetails('${a.id}', ${a.qty})">${btnText}</button>
                         <div id="admin-batch-actions-${a.id}" class="batch-actions-row" style="display: ${batchStyle};">
-                            <button class="done-btn icon-btn" style="width: 100%;" title="Done All (${a.qty})" onclick="completeAllUnits('${a.id}')">✔️ All</button>
-                            <button class="delete-btn icon-btn" style="width: 100%;" title="Delete All (${a.qty})" onclick="deleteAllUnits('${a.id}')">🗑️ All</button>
-                        </div>
                     `;
+                    if(canDone) btnHTML += `<button class="done-btn icon-btn" style="width: 100%;" title="Done All (${a.qty})" onclick="completeAllUnits('${a.id}')">✔️ All</button>`;
+                    if(canDel) btnHTML += `<button class="delete-btn icon-btn" style="width: 100%;" title="Delete All (${a.qty})" onclick="deleteAllUnits('${a.id}')">🗑️ All</button>`;
+                    btnHTML += `</div>`;
                 }
 
                 tr.innerHTML = `
@@ -1162,7 +1205,7 @@
                     <td>${serialHTML}</td>
                     <td>${soHTML}</td>
                     <td>${a.customer}</td>
-                    <td><input type="number" class="inline-input" style="width: 60px; min-width: 60px; height: 32px;" value="${a.qty}" onchange="updateQuantity('${a.id}', this.value)" min="1"></td>
+                    <td><input type="number" class="inline-input" style="width: 60px; min-width: 60px; height: 32px;" value="${a.qty}" ${canEditRec ? `onchange="updateQuantity('${a.id}', this.value)"` : ''} min="1" ${readOnlyAttr}></td>
                     <td style="min-width: 120px; vertical-align: top;">${btnHTML}</td>
                     <td style="white-space: nowrap; vertical-align: top;">${actionHTML}</td>
                 `;
