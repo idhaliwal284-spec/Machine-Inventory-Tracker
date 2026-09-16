@@ -152,7 +152,7 @@
         .perm-check input { margin: 0; width: 16px; height: 16px; cursor: pointer;}
     </style>
 
-    <!-- FIREBASE SCRIPTS (Added Auth) -->
+    <!-- FIREBASE SCRIPTS -->
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
@@ -254,7 +254,6 @@
             <div id="admin" class="tab-content">
                 <h2>Admin Control Panel</h2>
                 
-                <!-- SECTION: ASSIGN ORDERS -->
                 <div id="section-assign" class="admin-section">
                     <h3>1. Assign Order</h3>
                     <form id="assign-form" onsubmit="event.preventDefault(); assignOrder();">
@@ -277,7 +276,6 @@
                     </form>
                 </div>
 
-                <!-- SECTION: MANAGE PRODUCTS -->
                 <div id="section-products" class="admin-section">
                     <h3>2. Manage Product Names</h3>
                     <div id="admin-product-names-list"></div>
@@ -285,7 +283,6 @@
                     <button class="action-btn" onclick="saveProductNames()">Save Names</button>
                 </div>
 
-                <!-- SECTION: MANAGE INVENTORY -->
                 <div id="section-inventory" class="admin-section">
                     <h3>3. Manage Inventory (Qty on Hand)</h3>
                     <p style="font-size: 13px; color: #666; margin-top: 0;">Add/Remove received stock.</p>
@@ -306,7 +303,6 @@
                     </div>
                 </div>
 
-                <!-- SECTION: MANAGE ASSIGNMENTS -->
                 <div id="section-records" class="admin-section">
                     <h3>4. Manage Assignments</h3>
                     <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px;">
@@ -338,7 +334,6 @@
                     </div>
                 </div>
                 
-                <!-- SECTION: MANAGE USERS (SuperAdmin Only) -->
                 <div id="section-users" class="admin-section">
                     <h3>5. Manage Users & Access Permissions</h3>
                     <p style="font-size: 13px; color: #666; margin-top: 0;">Create new accounts for your team and assign their roles. (This section is only visible to Super Admins).</p>
@@ -398,7 +393,6 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
         const auth = firebase.auth();
-        
         const secondaryApp = firebase.initializeApp(firebaseConfig, "SecondaryApp");
 
         // Variables
@@ -422,6 +416,7 @@
                 document.getElementById('app-container').style.display = 'block';
                 document.getElementById('user-display').innerText = user.email;
                 
+                // Call UI updates here, but NO SAVE operations!
                 applyPermissionsUI();
             } else {
                 currentUser = null;
@@ -449,12 +444,6 @@
         function applyPermissionsUI() {
             if (!currentUser) return;
 
-            // FOOLPROOF ADMIN FIX: If the database permissions list is completely empty, you become SuperAdmin immediately.
-            if (Object.keys(userPermissions).length === 0) {
-                userPermissions[currentUser.email] = { isAdmin: true, canAssign: true, canManageInv: true, canManageRecords: true };
-                saveData();
-            }
-            
             const perms = userPermissions[currentUser.email] || {};
             
             if (!perms.isAdmin && !perms.canAssign && !perms.canManageInv && !perms.canManageRecords) {
@@ -474,16 +463,31 @@
         }
 
         // ==========================================
-        // 3. REAL-TIME CLOUD SYNC
+        // 3. REAL-TIME CLOUD SYNC & AUTO-RECOVERY
         // ==========================================
         db.collection("tracker").doc("trackerData").onSnapshot((doc) => {
             if (doc.exists) {
                 const data = doc.data();
-                PRODUCTS = data.PRODUCTS || PRODUCTS;
-                inventory = data.inventory || {};
-                assignments = data.assignments || [];
-                completedAssignments = data.completedAssignments || [];
-                userPermissions = data.userPermissions || {};
+                
+                // EMERGENCY RECOVERY CHECK: If the cloud is mysteriously empty, but your local laptop memory has the data, grab the local data!
+                const localAssignments = JSON.parse(localStorage.getItem('asset_assignments')) || [];
+                if ((!data.assignments || data.assignments.length === 0) && localAssignments.length > 0) {
+                    console.log("RECOVERING FROM LOCAL BACKUP...");
+                    PRODUCTS = JSON.parse(localStorage.getItem('asset_products')) || PRODUCTS;
+                    inventory = JSON.parse(localStorage.getItem('asset_inventory')) || {};
+                    assignments = localAssignments;
+                    completedAssignments = JSON.parse(localStorage.getItem('asset_completed')) || [];
+                    userPermissions = data.userPermissions || {};
+                    
+                    saveData(); // Push the recovered data back to the cloud
+                } else {
+                    // Normal load process
+                    PRODUCTS = data.PRODUCTS || PRODUCTS;
+                    inventory = data.inventory || {};
+                    assignments = data.assignments || [];
+                    completedAssignments = data.completedAssignments || [];
+                    userPermissions = data.userPermissions || {};
+                }
             } else {
                 PRODUCTS = JSON.parse(localStorage.getItem('asset_products')) || PRODUCTS;
                 inventory = JSON.parse(localStorage.getItem('asset_inventory')) || {};
@@ -491,6 +495,12 @@
                 completedAssignments = JSON.parse(localStorage.getItem('asset_completed')) || [];
                 userPermissions = {};
                 saveData(); 
+            }
+            
+            // SAFELY check for first Admin only AFTER data is loaded
+            if (Object.keys(userPermissions).length === 0 && currentUser) {
+                userPermissions[currentUser.email] = { isAdmin: true, canAssign: true, canManageInv: true, canManageRecords: true };
+                saveData();
             }
             
             populateDropdowns();
@@ -501,8 +511,7 @@
             updateDashboard();
             renderAdminTables();
             
-            // Re-apply permissions just in case the database load finished after the login load
-            applyPermissionsUI();
+            applyPermissionsUI(); // Update UI permissions with fresh data
         });
 
         function saveData() {
