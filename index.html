@@ -148,7 +148,6 @@
         .dynamic-row input { margin: 0; flex: 1; min-width: 150px; }
         .batch-actions-row { display: flex; gap: 5px; margin-top: 5px; border-top: 1px solid #ddd; padding-top: 8px; }
         
-        /* Checkbox styling for permissions */
         .perm-check { display: flex; align-items: center; gap: 5px; margin-bottom: 8px; font-size: 14px; cursor: pointer; }
         .perm-check input { margin: 0; width: 16px; height: 16px; cursor: pointer;}
     </style>
@@ -400,7 +399,6 @@
         const db = firebase.firestore();
         const auth = firebase.auth();
         
-        // This secondary app lets the Admin create new users without getting logged out themselves
         const secondaryApp = firebase.initializeApp(firebaseConfig, "SecondaryApp");
 
         // Variables
@@ -423,6 +421,7 @@
                 document.getElementById('login-screen').style.display = 'none';
                 document.getElementById('app-container').style.display = 'block';
                 document.getElementById('user-display').innerText = user.email;
+                
                 applyPermissionsUI();
             } else {
                 currentUser = null;
@@ -449,9 +448,15 @@
 
         function applyPermissionsUI() {
             if (!currentUser) return;
+
+            // FOOLPROOF ADMIN FIX: If the database permissions list is completely empty, you become SuperAdmin immediately.
+            if (Object.keys(userPermissions).length === 0) {
+                userPermissions[currentUser.email] = { isAdmin: true, canAssign: true, canManageInv: true, canManageRecords: true };
+                saveData();
+            }
+            
             const perms = userPermissions[currentUser.email] || {};
             
-            // If they have NO permissions, hide the Admin button completely
             if (!perms.isAdmin && !perms.canAssign && !perms.canManageInv && !perms.canManageRecords) {
                 document.getElementById('btn-admin-tab').style.display = 'none';
                 if(document.getElementById('admin').classList.contains('active')) switchTab('dashboard');
@@ -459,7 +464,6 @@
                 document.getElementById('btn-admin-tab').style.display = 'inline-block';
             }
 
-            // Hide/Show Admin Sections based on roles
             document.getElementById('section-assign').style.display = perms.canAssign || perms.isAdmin ? 'block' : 'none';
             document.getElementById('section-products').style.display = perms.isAdmin ? 'block' : 'none';
             document.getElementById('section-inventory').style.display = perms.canManageInv || perms.isAdmin ? 'block' : 'none';
@@ -484,20 +488,20 @@
                 PRODUCTS = JSON.parse(localStorage.getItem('asset_products')) || PRODUCTS;
                 inventory = JSON.parse(localStorage.getItem('asset_inventory')) || {};
                 assignments = JSON.parse(localStorage.getItem('asset_assignments')) || [];
+                completedAssignments = JSON.parse(localStorage.getItem('asset_completed')) || [];
                 userPermissions = {};
-            }
-            
-            // Auto-make the very first user the SuperAdmin so you aren't locked out
-            if (Object.keys(userPermissions).length === 0 && currentUser) {
-                userPermissions[currentUser.email] = { isAdmin: true, canAssign: true, canManageInv: true, canManageRecords: true };
-                saveData();
+                saveData(); 
             }
             
             populateDropdowns();
             renderProductNames();
-            if (document.getElementById('assign-dynamic-container').innerHTML === '') generateDynamicInputs(); 
+            if (document.getElementById('assign-dynamic-container').innerHTML === '') {
+                generateDynamicInputs(); 
+            }
             updateDashboard();
             renderAdminTables();
+            
+            // Re-apply permissions just in case the database load finished after the login load
             applyPermissionsUI();
         });
 
@@ -524,7 +528,6 @@
 
             if(!email || !pass) return;
 
-            // Use secondary app to create user without kicking the admin out
             secondaryApp.auth().createUserWithEmailAndPassword(email, pass)
                 .then(() => {
                     secondaryApp.auth().signOut();
@@ -579,7 +582,6 @@
                 tbody.appendChild(tr);
             }
         }
-
 
         // ==========================================
         // 5. CORE APPLICATION LOGIC
