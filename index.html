@@ -474,16 +474,15 @@
         // ==========================================
         // 1. FIREBASE CONFIGURATION
         // ==========================================
-  const firebaseConfig = {
-    apiKey: "AIzaSyCA4fc19l4ZWFNn82RXJZdkar0yX1PslVk",
-    authDomain: "inventory-tracker-a2a8e.firebaseapp.com",
-    databaseURL: "https://inventory-tracker-a2a8e-default-rtdb.firebaseio.com",
-    projectId: "inventory-tracker-a2a8e",
-    storageBucket: "inventory-tracker-a2a8e.firebasestorage.app",
-    messagingSenderId: "223209852536",
-    appId: "1:223209852536:web:c2f58d9c284988547d278d"
-  };
-   
+        const firebaseConfig = {
+            apiKey: "AIzaSyCA4fc19l4ZWFNn82RXJZdkar0yX1PslVk",
+            authDomain: "inventory-tracker-a2a8e.firebaseapp.com",
+            databaseURL: "https://inventory-tracker-a2a8e-default-rtdb.firebaseio.com",
+            projectId: "inventory-tracker-a2a8e",
+            storageBucket: "inventory-tracker-a2a8e.firebasestorage.app",
+            messagingSenderId: "223209852536",
+            appId: "1:223209852536:web:c2f58d9c284988547d278d"
+        };
 
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
@@ -687,18 +686,15 @@
             status.innerText = "⏳ Initializing AI Engine...";
 
             const originalCanvas = cropper.getCroppedCanvas();
-            
-            // Upscale slightly to smooth out dot-matrix gaps without breaking the contrast
             const scale = 2;
             const processCanvas = document.createElement('canvas');
             processCanvas.width = originalCanvas.width * scale;
             processCanvas.height = originalCanvas.height * scale;
             const ctx = processCanvas.getContext('2d');
-            ctx.imageSmoothingEnabled = true; // Natural smoothing
+            ctx.imageSmoothingEnabled = true;
             ctx.drawImage(originalCanvas, 0, 0, processCanvas.width, processCanvas.height);
 
             try {
-                // Run standard un-restricted Tesseract
                 const result = await Tesseract.recognize(processCanvas, 'eng', {
                     logger: m => {
                         if(m.status === 'recognizing text'){
@@ -707,12 +703,8 @@
                     }
                 });
                 
-                // Post-process to remove noise
                 let extractedText = result.data.text.replace(/[^A-Za-z0-9-]/g, '').toUpperCase();
-                
-                if (!extractedText) {
-                    extractedText = result.data.text.trim();
-                }
+                if (!extractedText) extractedText = result.data.text.trim();
                 
                 if (!extractedText) {
                     status.innerText = "❌ Nothing detected. Try taking a closer photo.";
@@ -1102,7 +1094,6 @@
 
             const versions = []; const keyCodes = []; const serials = []; const sos = [];
             for(let i=0; i < qty; i++) {
-                
                 if (isSameVersion) versions.push(masterVersion);
                 else { const vInput = document.getElementById(`admin-version-${i}`); versions.push(vInput ? vInput.value : ''); }
                 
