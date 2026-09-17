@@ -4,1432 +4,219 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Signifi Solutions INC. - Asset Tracker</title>
-    
-    <!-- CROPPER.JS CSS -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet">
-
+    <!-- Bootstrap CSS for clean UI -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
     <style>
-        :root {
-            --primary: #0056b3;
-            --secondary: #f4f6f9;
-            --text-dark: #333;
-            --border: #ccc;
-        }
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #eef2f5;
-            color: var(--text-dark);
-        }
-        /* --- LOGIN SCREEN STYLES --- */
-        #login-screen {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background-color: #eef2f5;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            z-index: 9999;
-        }
-        .login-box {
-            background: white; padding: 40px; border-radius: 8px;
-            width: 100%; max-width: 350px; text-align: center;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1); border-top: 5px solid var(--primary);
-        }
-        .login-box h2 { margin-top: 0; color: var(--primary); margin-bottom: 20px; }
-        .login-box input { width: 100%; padding: 12px; margin-bottom: 15px; box-sizing: border-box; font-size: 16px; border: 1px solid #ccc; border-radius: 4px;}
-        .login-box button { width: 100%; padding: 12px; background-color: var(--primary); color: white; border: none; border-radius: 4px; font-size: 16px; font-weight: bold; cursor: pointer; }
-        .login-box button:hover { background-color: #004494; }
-        #app-container { display: none; } 
-
-        /* --- HEADER & NAVIGATION --- */
-        .header {
-            background-color: var(--primary); color: white; padding: 15px 20px;
-            display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;
-        }
-        .header h1 { margin: 0; font-size: 20px; }
-        .nav-buttons button {
-            background-color: white; color: var(--primary); border: none; padding: 8px 15px;
-            margin-left: 5px; border-radius: 4px; cursor: pointer; font-weight: bold;
-        }
-        .nav-buttons button:hover { background-color: #ddd; }
-        
-        .container { padding: 20px; max-width: 1200px; margin: auto; }
-        
-        .tab-content { display: none; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .tab-content.active { display: block; }
-
-        /* --- BIG HOME BUTTONS --- */
-        .home-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 20px;
-            margin-top: 20px;
-        }
-        .big-btn {
-            background-color: white; border: 2px solid var(--primary); color: var(--primary);
-            padding: 40px 20px; font-size: 20px; font-weight: bold; border-radius: 12px;
-            cursor: pointer; transition: all 0.2s ease; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            display: flex; flex-direction: column; align-items: center; gap: 15px;
-        }
-        .big-btn:hover {
-            background-color: var(--primary); color: white; transform: translateY(-5px); box-shadow: 0 8px 15px rgba(0,0,0,0.15);
-        }
-        .big-btn .icon { font-size: 48px; }
-
-        /* --- FORMS & TABLES --- */
-        .control-group { display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end; margin-bottom: 25px; }
-        select, input { padding: 10px; font-size: 14px; border: 1px solid var(--border); border-radius: 4px; margin-right: 5px; margin-bottom: 10px; box-sizing: border-box; }
-        button.action-btn { background-color: var(--primary); color: white; border: none; padding: 10px 20px; font-size: 14px; border-radius: 4px; cursor: pointer; }
-        button.action-btn:hover { background-color: #004494; }
-        button.add-btn { background-color: #28a745; color: white; border: none; padding: 10px 20px; font-size: 14px; border-radius: 4px; cursor: pointer; margin-bottom: 15px; display: block; }
-        button.add-btn:hover { background-color: #218838; }
-        button.delete-btn { background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; padding: 10px 20px; }
-        button.done-btn { background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; }
-        button.done-btn:hover { background-color: #218838; }
-        .icon-btn { width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; letter-spacing: -1px; }
-        .toggle-btn { background-color: #e2e6ea; color: #333; border: 1px solid #dae0e5; padding: 5px 10px; font-size: 12px; font-weight: bold; border-radius: 4px; cursor: pointer; display: inline-block; }
-        .toggle-btn:hover { background-color: #d3d9df; }
-        
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 30px; }
-        .stat-card { background-color: var(--secondary); border: 1px solid var(--border); border-radius: 8px; padding: 15px; text-align: center; }
-        .stat-card h3 { margin: 0 0 10px 0; font-size: 16px; color: #666; }
-        .stat-card .number { font-size: 36px; font-weight: bold; color: var(--primary); }
-        .stat-card .number.forecast { color: #28a745; }
-        
-        .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; margin-top: 15px; border: 1px solid var(--border); border-radius: 4px; }
-        table { width: 100%; min-width: 800px; border-collapse: collapse; }
-        th, td { border: 1px solid var(--border); padding: 10px; text-align: left; vertical-align: top; font-size: 13px; }
-        th { background-color: var(--secondary); white-space: nowrap; }
-        
-        .admin-section { border: 1px solid var(--border); padding: 15px; margin-bottom: 20px; border-radius: 8px; overflow-x: hidden; }
-        .name-slot { display: inline-block; margin-right: 10px; margin-bottom: 10px; }
-        .name-slot label { display: block; font-size: 12px; color: #666; margin-bottom: 4px; font-weight: bold; }
-        .inline-input { padding: 6px; font-size: 13px; margin: 0; width: 100%; min-width: 80px; height: 32px; box-sizing: border-box; border: 1px solid #aaa; border-radius: 4px; }
-        .inline-input:read-only { background-color: #e9ecef; color: #6c757d; border-color: #ddd; cursor: not-allowed; }
-        
-        .search-bar { width: 100%; padding: 10px; font-size: 14px; border: 2px solid var(--primary); border-radius: 6px; margin-bottom: 10px; box-sizing: border-box; }
-        .dynamic-row { display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
-        .dynamic-row > * { margin: 0; flex: 1; min-width: 100px; }
-        .batch-actions-row { display: flex; gap: 5px; margin-top: 5px; border-top: 1px solid #ddd; padding-top: 8px; }
-        
-        .perm-check { display: flex; align-items: center; gap: 5px; margin-bottom: 8px; font-size: 14px; cursor: pointer; }
-        .perm-check input { margin: 0; width: 16px; height: 16px; cursor: pointer;}
-        .perm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-
-        /* --- OVERLAY MODALS FOR SCANNERS --- */
-        .overlay {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.85); z-index: 10000; align-items: center; justify-content: center; flex-direction: column;
-        }
-        .modal-box { background: white; padding: 20px; border-radius: 8px; width: 95%; max-width: 500px; text-align: center; }
-        
-        /* Barcode Reader Styles */
-        #barcode-reader { width: 100%; min-height: 250px; margin-bottom: 15px; }
-
-        /* Cropper Styles */
-        .cropper-container-wrapper { width: 100%; max-height: 50vh; overflow: hidden; margin-bottom: 15px; background: #eee; }
-        #cropper-image { max-width: 100%; display: block; }
+        body { background-color: #f8f9fa; }
+        .navbar-brand { font-weight: bold; }
+        .card-stat { border-left: 4px solid #0d6efd; }
     </style>
-
-    <!-- FIREBASE SCRIPTS -->
-    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
-
-    <!-- BARCODE SCANNER LIBRARY -->
-    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-    
-    <!-- TESSERACT.JS OCR LIBRARY -->
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-
-    <!-- CROPPER.JS LIBRARY -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
 </head>
 <body>
 
-    <!-- SECURE LOGIN SCREEN -->
-    <div id="login-screen">
-        <div class="login-box">
-            <h2>Signifi Asset Tracker</h2>
-            <form onsubmit="event.preventDefault(); loginUser();">
-                <input type="email" id="login-email" placeholder="Email Address" required>
-                <input type="password" id="login-pass" placeholder="Password" required>
-                <button type="submit">Sign In</button>
-            </form>
-            <p id="login-error" style="color: #dc3545; font-size: 14px; display: none; margin-top: 15px;"></p>
+    <!-- Navigation Header -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">Signifi Solutions INC. - Asset Tracker</a>
+            <div class="d-flex align-items-center">
+                <span id="userEmailDisplay" class="text-white me-3 small"></span>
+                <button class="btn btn-light btn-sm me-2" onclick="switchView('home')">Home Menu</button>
+                <button class="btn btn-danger btn-sm" onclick="logoutUser()">Logout</button>
+            </div>
         </div>
+    </nav>
+
+    <!-- Main Container -->
+    <div class="container my-4">
+
+        <!-- HOME / MENU VIEW -->
+        <div id="homeView" class="row text-center g-4">
+            <div class="col-12"><h2>Welcome to Asset Tracker</h2></div>
+            <div class="col-md-4">
+                <div class="card shadow-sm p-4 cursor-pointer" onclick="switchView('dashboard')" style="cursor:pointer;">
+                    <h4>Dashboard Overview</h4>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card shadow-sm p-4" onclick="switchView('assign')" style="cursor:pointer;">
+                    <h4>Assign Machine</h4>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card shadow-sm p-4" onclick="switchView('stock')" style="cursor:pointer;">
+                    <h4>Machine Stock</h4>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card shadow-sm p-4" onclick="switchView('records')" style="cursor:pointer;">
+                    <h4>Manage Records</h4>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card shadow-sm p-4" onclick="switchView('users')" style="cursor:pointer;">
+                    <h4>Manage Users</h4>
+                </div>
+            </div>
+        </div>
+
+        <!-- DASHBOARD VIEW -->
+        <div id="dashboardView" style="display:none;">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h3>Dashboard Overview</h3>
+                <button class="btn btn-outline-secondary btn-sm" onclick="switchView('home')">← Back to Menu</button>
+            </div>
+            <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                    <div class="card card-stat p-3 shadow-sm">
+                        <h5>Total Qty on Hand</h5>
+                        <h2 id="totalQtyOnHand">0</h2>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card card-stat p-3 shadow-sm">
+                        <h5>Qty Assigned</h5>
+                        <h2 id="totalQtyAssigned">0</h2>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card card-stat p-3 shadow-sm">
+                        <h5>Forecast (Available)</h5>
+                        <h2 id="totalForecast">0</h2>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm p-3">
+                <h5>Assigned Units List</h5>
+                <table class="table table-striped mt-2">
+                    <thead>
+                        <tr>
+                            <th>Date / Time</th>
+                            <th>Product</th>
+                            <th>Serial Number(s)</th>
+                            <th>Sales Order (SO)</th>
+                            <th>Customer</th>
+                            <th>Qty</th>
+                        </tr>
+                    </thead>
+                    <tbody id="assignedTableBody">
+                        <tr><td colspan="6" class="text-center text-muted">No records found.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- OTHER VIEWS PLACEHOLDERS -->
+        <div id="assignView" style="display:none;">
+            <h3>Assign Machine</h3>
+            <button class="btn btn-outline-secondary mb-3" onclick="switchView('home')">← Back to Menu</button>
+            <p class="text-muted">Assignment interface active.</p>
+        </div>
+
+        <div id="stockView" style="display:none;">
+            <h3>Machine Stock</h3>
+            <button class="btn btn-outline-secondary mb-3" onclick="switchView('home')">← Back to Menu</button>
+            <p class="text-muted">Stock inventory active.</p>
+        </div>
+
+        <div id="recordsView" style="display:none;">
+            <h3>Manage Records</h3>
+            <button class="btn btn-outline-secondary mb-3" onclick="switchView('home')">← Back to Menu</button>
+            <p class="text-muted">Record management active.</p>
+        </div>
+
+        <div id="usersView" style="display:none;">
+            <h3>Manage Users</h3>
+            <button class="btn btn-outline-secondary mb-3" onclick="switchView('home')">← Back to Menu</button>
+            <p class="text-muted">User administration active.</p>
+        </div>
+
     </div>
 
-    <!-- BARCODE SCANNER OVERLAY -->
-    <div id="barcode-overlay" class="overlay">
-        <div class="modal-box">
-            <h3 style="margin-top:0; color: var(--primary);">||| Scan Barcode</h3>
-            <p style="font-size: 13px; color: #666; margin-top: 0; margin-bottom: 10px;">Align barcode within the window.</p>
-            <div id="barcode-reader"></div>
-            <button class="delete-btn" style="width:100%; font-weight:bold; margin-top: 10px;" onclick="closeBarcodeScanner()">Cancel</button>
-        </div>
-    </div>
-
-    <!-- PHOTO CROP OCR OVERLAY -->
-    <div id="cropper-overlay" class="overlay">
-        <div class="modal-box">
-            <h3 style="margin-top:0; color: var(--primary);">📷 Crop Text to Read</h3>
-            <p style="font-size: 13px; color: #666; margin-top: 0; margin-bottom: 10px;">Drag the corners to highlight ONLY the text you want.</p>
-            
-            <div class="cropper-container-wrapper">
-                <img id="cropper-image" src="">
-            </div>
-            
-            <div id="ocr-status" style="font-size: 14px; font-weight: bold; color: var(--primary); height: 20px; margin-bottom: 15px;">Ready</div>
-            
-            <div style="display: flex; gap: 10px;">
-                <button id="btn-do-ocr" class="action-btn" style="flex: 2; font-weight: bold;" onclick="performCropAndOCR()">📸 Crop & Read</button>
-                <button class="delete-btn" style="flex: 1; font-weight: bold;" onclick="closeCropper()">Cancel</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- HIDDEN FILE INPUT FOR CAMERA -->
-    <input type="file" id="camera-file-input" accept="image/*" capture="environment" style="display:none;" onchange="handleCameraInput(event)">
-
-    <!-- MAIN APP WRAPPER -->
-    <div id="app-container">
-        <div class="header">
-            <h1>Signifi Solutions INC. - Asset Tracker</h1>
-            <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
-                <div style="font-size: 14px; background: rgba(0,0,0,0.2); padding: 5px 10px; border-radius: 4px;">
-                    👤 <span id="user-display"></span>
-                </div>
-                <div class="nav-buttons">
-                    <button onclick="switchTab('home')">🏠 Home Menu</button>
-                    <button onclick="logoutUser()" style="background-color: #dc3545; color: white;">Logout</button>
-                </div>
-            </div>
-        </div>
-
-        <div class="container">
-            
-            <!-- 🏠 HOME MENU HUB -->
-            <div id="home" class="tab-content active" style="background: transparent; box-shadow: none; padding: 0;">
-                <h2 style="color: var(--primary); text-align: center; margin-bottom: 30px; font-size: 32px;">Welcome to Asset Tracker</h2>
-                <div class="home-grid">
-                    <button class="big-btn" onclick="switchTab('dashboard')">
-                        <span class="icon">📊</span>
-                        Dashboard Overview
-                    </button>
-                    <button class="big-btn" id="btn-home-assign" onclick="switchTab('assign')">
-                        <span class="icon">📦</span>
-                        Assign Machine
-                    </button>
-                    <button class="big-btn" id="btn-home-inventory" onclick="switchTab('inventory')">
-                        <span class="icon">⚙️</span>
-                        Machine Stock
-                    </button>
-                    <button class="big-btn" id="btn-home-records" onclick="switchTab('records')">
-                        <span class="icon">📋</span>
-                        Manage Records
-                    </button>
-                    <button class="big-btn" id="btn-home-users" onclick="switchTab('users')">
-                        <span class="icon">👥</span>
-                        Manage Users
-                    </button>
-                </div>
-            </div>
-
-            <!-- DASHBOARD TAB -->
-            <div id="dashboard" class="tab-content">
-                <h2>Dashboard Overview</h2>
-                
-                <div style="margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #ccc;">
-                    <label for="dash-global-search" style="font-weight: bold; font-size: 16px; display:block; color: var(--primary);">Global Search (All Products):</label>
-                    <input type="text" id="dash-global-search" class="search-bar" style="max-width: 100%; margin-bottom: 0;" placeholder="🔍 Search Date, Product, Version, Key Code, Serial, SO, Customer..." onkeyup="updateDashboard()">
-                    <small style="display: block; color: #666; margin-top: 5px;">Typing here will override the product selection below.</small>
-                </div>
-
-                <div class="control-group">
-                    <div style="flex: 1; min-width: 200px;">
-                        <label for="dash-product" style="font-weight: bold; font-size: 14px; display:block;">Select Product:</label>
-                        <select id="dash-product" onchange="updateDashboard()" style="width: 100%;"></select>
-                    </div>
-                    <div style="flex: 1; min-width: 200px;">
-                        <label for="dash-group" style="font-weight: bold; font-size: 14px; display:block;">Group Records By:</label>
-                        <select id="dash-group" onchange="updateDashboard()" style="width: 100%;">
-                            <option value="none">None (Newest First)</option>
-                            <option value="customer">Customer</option>
-                            <option value="so">Sales Order (SO)</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <h3>Total Qty on Hand</h3>
-                        <div class="number" id="dash-qty-on-hand">0</div>
-                    </div>
-                    <div class="stat-card">
-                        <h3>Qty Assigned</h3>
-                        <div class="number" id="dash-qty-assigned">0</div>
-                    </div>
-                    <div class="stat-card">
-                        <h3>Forecast (Available)</h3>
-                        <div class="number forecast" id="dash-qty-forecast">0</div>
-                    </div>
-                </div>
-
-                <h3>Assigned Units List</h3>
-                <div class="table-responsive">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Date / Time</th>
-                                <th>Product</th>
-                                <th>Version</th>
-                                <th>Key Code</th>
-                                <th>Serial Number(s)</th>
-                                <th>Sales Order (SO)</th>
-                                <th>Customer</th>
-                                <th>Qty</th>
-                                <th>Details</th>
-                            </tr>
-                        </thead>
-                        <tbody id="dash-table-body">
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- ASSIGN TAB -->
-            <div id="assign" class="tab-content">
-                <h2>Assign Order</h2>
-                <form id="assign-form" onsubmit="event.preventDefault(); assignOrder();">
-                    <div style="display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap;">
-                        <select id="admin-assign-product" style="flex: 1; min-width: 150px; margin-bottom:0;" required></select>
-                        <input type="text" id="admin-customer" placeholder="Customer Name" style="flex: 1; min-width: 150px; margin-bottom:0;" required>
-                        <input type="number" id="admin-qty" placeholder="Qty" min="1" value="1" style="width: 80px; margin-bottom:0;" required oninput="generateDynamicInputs()">
-                    </div>
-                    
-                    <div style="display: flex; gap: 15px; flex-wrap: wrap; margin: 15px 0;">
-                        <div style="background-color: #f4f6f9; padding: 10px; border-radius: 4px; border: 1px solid #ccc; flex: 1; min-width: 250px;">
-                            <label style="font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 14px; margin-bottom: 10px;">
-                                <input type="checkbox" id="admin-same-version" checked onchange="generateDynamicInputs()" style="margin:0; width: 16px; height: 16px;"> 
-                                Apply SAME Version to all units
-                            </label>
-                            <input type="text" id="admin-master-version" placeholder="Version (Optional)" style="display: block; width: 100%; box-sizing: border-box; margin: 0;">
-                        </div>
-
-                        <div style="background-color: #f4f6f9; padding: 10px; border-radius: 4px; border: 1px solid #ccc; flex: 1; min-width: 250px;">
-                            <label style="font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 14px; margin-bottom: 10px;">
-                                <input type="checkbox" id="admin-same-so" checked onchange="generateDynamicInputs()" style="margin:0; width: 16px; height: 16px;"> 
-                                Apply SAME Sales Order to all units
-                            </label>
-                            <input type="text" id="admin-master-so" placeholder="Sales Order (Optional)" style="display: block; width: 100%; box-sizing: border-box; margin: 0;">
-                        </div>
-                    </div>
-                    
-                    <div id="assign-dynamic-container" style="margin-top: 15px; display: flex; flex-direction: column;"></div>
-                    <button type="submit" class="action-btn" style="margin-top: 15px; width: 100%; max-width: 200px;">Assign Unit(s)</button>
-                </form>
-
-                <div style="margin-top: 40px; border-top: 2px solid #eee; padding-top: 20px;">
-                    <h3 style="color: var(--primary);">Recent Assignments (Last 10)</h3>
-                    <div class="table-responsive">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Date / Time</th>
-                                    <th>Product</th>
-                                    <th>Version</th>
-                                    <th>Key Code</th>
-                                    <th>Serial Number</th>
-                                    <th>Sales Order</th>
-                                    <th>Customer</th>
-                                    <th>Qty</th>
-                                </tr>
-                            </thead>
-                            <tbody id="assign-recent-table-body">
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <!-- INVENTORY & PRODUCTS TAB -->
-            <div id="inventory" class="tab-content">
-                <h2>Machine Stock</h2>
-                
-                <div id="section-products" class="admin-section" style="background-color: #f8f9fa;">
-                    <h3 style="margin-top: 0;">Manage Product Names</h3>
-                    <div id="admin-product-names-list"></div>
-                    <button type="button" class="add-btn" onclick="addProductSlot()">+ Add Another</button>
-                    <button class="action-btn" onclick="saveProductNames()">Save Names</button>
-                </div>
-
-                <div id="section-inventory" class="admin-section">
-                    <h3 style="margin-top: 0;">Manage Inventory (Qty on Hand)</h3>
-                    <p style="font-size: 13px; color: #666; margin-top: 0;">Add/Remove received stock.</p>
-                    <div class="table-responsive">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Product</th>
-                                    <th>Current Qty</th>
-                                    <th>+/- Qty</th>
-                                    <th>New Total</th>
-                                    <th>Action</th>
-                                </tr>
-                            </thead>
-                            <tbody id="admin-inv-table-body">
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <!-- RECORDS TAB -->
-            <div id="records" class="tab-content">
-                <h2>Manage Assignments</h2>
-                <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px;">
-                    <input type="text" id="admin-filter" class="search-bar" style="flex: 1; min-width: 200px; margin:0;" placeholder="🔍 Search Date, Product, Version, Key Code, Serial, SO, Customer..." onkeyup="renderAdminTables()">
-                    <select id="admin-group" class="search-bar" style="width:auto; margin:0;" onchange="renderAdminTables()">
-                        <option value="none">Group By: None</option>
-                        <option value="product">Group By: Product</option>
-                        <option value="customer">Group By: Customer</option>
-                        <option value="so">Group By: SO</option>
-                    </select>
-                </div>
-                <div class="table-responsive">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Date / Time</th>
-                                <th>Product</th>
-                                <th>Version</th>
-                                <th>Key Code</th>
-                                <th>Serial Number(s)</th>
-                                <th>Sales Order(s)</th>
-                                <th>Customer</th>
-                                <th>Qty</th>
-                                <th>Details</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="admin-assignments-table-body">
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            
-            <!-- USERS TAB -->
-            <div id="users" class="tab-content">
-                <h2>Manage Users & Access Permissions</h2>
-                <p style="font-size: 13px; color: #666; margin-top: 0;">Create new accounts for your team and assign their specific roles.</p>
-                
-                <div style="background: #f8f9fa; padding: 15px; border-radius: 6px; border: 1px solid #ddd; margin-bottom: 20px;">
-                    <h4 style="margin-top: 0;">Create New User Account</h4>
-                    <form id="new-user-form" onsubmit="event.preventDefault(); createNewUser();" style="display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-start;">
-                        <div style="flex: 1; min-width: 200px;">
-                            <input type="email" id="new-user-email" placeholder="Employee Email Address" required style="width: 100%;">
-                            <input type="text" id="new-user-pass" placeholder="Set Temporary Password" required style="width: 100%; margin-bottom: 0;">
-                        </div>
-                        
-                        <div style="flex: 2; min-width: 300px; background: white; padding: 15px; border: 1px solid #ccc; border-radius: 4px;">
-                            <strong style="display:block; margin-bottom: 10px; color: var(--primary);">Micro-Permissions Selection:</strong>
-                            <div class="perm-grid">
-                                <label class="perm-check"><input type="checkbox" id="perm-assign" checked> Assign Machines</label>
-                                <label class="perm-check"><input type="checkbox" id="perm-view-records" checked> View Records Tab</label>
-                                <label class="perm-check"><input type="checkbox" id="perm-add-stock"> Update Stock Qty</label>
-                                <label class="perm-check"><input type="checkbox" id="perm-edit-records"> Edit Records (SN/SO)</label>
-                                <label class="perm-check"><input type="checkbox" id="perm-manage-names"> Manage Product Names</label>
-                                <label class="perm-check"><input type="checkbox" id="perm-mark-done"> Mark as Done (✔️)</label>
-                                <label class="perm-check"><input type="checkbox" id="perm-admin" style="accent-color: #dc3545;"> <strong style="color:#dc3545;">Super Admin</strong></label>
-                                <label class="perm-check"><input type="checkbox" id="perm-delete-records"> Delete Records (🗑️)</label>
-                            </div>
-                        </div>
-                        
-                        <div style="width: 100%;">
-                            <button type="submit" class="action-btn">Create User Account</button>
-                        </div>
-                    </form>
-                </div>
-
-                <h4>Current Users List</h4>
-                <div class="table-responsive">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>User Email</th>
-                                <th>Permissions</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="users-table-body">
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-        </div>
-    </div>
-
+    <!-- Application Script Logic -->
     <script>
-        // ==========================================
-        // 1. FIREBASE CONFIGURATION
-        // ==========================================
+        // Firebase Configuration
         const firebaseConfig = {
-            apiKey: "AIzaSyCA4fc19l4ZWFNn82RXJZdkar0yX1PslVk",
-            authDomain: "inventory-tracker-a2a8e.firebaseapp.com",
-            databaseURL: "https://inventory-tracker-a2a8e-default-rtdb.firebaseio.com",
-            projectId: "inventory-tracker-a2a8e",
-            storageBucket: "inventory-tracker-a2a8e.firebasestorage.app",
-            messagingSenderId: "223209852536",
-            appId: "1:223209852536:web:c2f58d9c284988547d278d"
+            projectId: "inventory-tracker-a2a8e"
         };
-
-        firebase.initializeApp(firebaseConfig);
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
         const db = firebase.firestore();
-        const auth = firebase.auth();
-        const secondaryApp = firebase.initializeApp(firebaseConfig, "SecondaryApp");
 
-        let PRODUCTS = Array.from({length: 9}, (_, i) => `Product ${i + 1}`);
-        let inventory = {};
-        let assignments = [];
-        let completedAssignments = []; 
-        let userPermissions = {}; 
-        
-        let currentUser = null;
-        let expandedAdminRows = new Set();
-        let expandedDashRows = new Set();
+        // Local Data Stores
+        let PRODUCTS = JSON.parse(localStorage.getItem('asset_products')) || ["HJ135-110V", "HJ170-110V", "Product 3", "Product 4", "Product 5"];
+        let inventory = JSON.parse(localStorage.getItem('asset_inventory')) || {};
+        let assignments = JSON.parse(localStorage.getItem('asset_assignments')) || [];
 
-        // Scanner State Variables
-        let currentScanTarget = null;
-        let scanUpdateParams = null;
-        let html5QrCode = null;
-        let cropper = null;
+        function switchView(viewName) {
+            document.getElementById('homeView').style.display = 'none';
+            document.getElementById('dashboardView').style.display = 'none';
+            document.getElementById('assignView').style.display = 'none';
+            document.getElementById('stockView').style.display = 'none';
+            document.getElementById('recordsView').style.display = 'none';
+            document.getElementById('usersView').style.display = 'none';
 
-        // ==========================================
-        // 2. AUTHENTICATION & ACCESS CONTROL
-        // ==========================================
-        auth.onAuthStateChanged(user => {
-            if (user) {
-                currentUser = user;
-                document.getElementById('login-screen').style.display = 'none';
-                document.getElementById('app-container').style.display = 'block';
-                document.getElementById('user-display').innerText = user.email;
-                switchTab('home'); 
-                applyPermissionsUI();
-            } else {
-                currentUser = null;
-                document.getElementById('login-screen').style.display = 'flex';
-                document.getElementById('app-container').style.display = 'none';
-            }
-        });
-
-        function loginUser() {
-            const email = document.getElementById('login-email').value.trim();
-            const pass = document.getElementById('login-pass').value;
-            const errBox = document.getElementById('login-error');
-            auth.signInWithEmailAndPassword(email, pass).catch(err => {
-                errBox.style.display = 'block'; errBox.innerText = "Error: " + err.message;
-            });
-        }
-
-        function logoutUser() { auth.signOut(); }
-
-        function applyPermissionsUI() {
-            if (!currentUser) return;
-            if (Object.keys(userPermissions).length === 0) {
-                userPermissions[currentUser.email] = { isAdmin: true, canAssign: true, canManageNames: true, canAddStock: true, canViewRecords: true, canEditRecords: true, canMarkDone: true, canDeleteRecords: true };
-                saveData();
-            }
-            
-            const perms = userPermissions[currentUser.email] || {};
-            
-            document.getElementById('btn-home-assign').style.display = perms.canAssign || perms.isAdmin ? 'flex' : 'none';
-            document.getElementById('btn-home-inventory').style.display = perms.canAddStock || perms.canManageNames || perms.isAdmin ? 'flex' : 'none';
-            document.getElementById('btn-home-records').style.display = perms.canViewRecords || perms.isAdmin ? 'flex' : 'none';
-            document.getElementById('btn-home-users').style.display = perms.isAdmin ? 'flex' : 'none';
-            
-            document.getElementById('section-products').style.display = perms.canManageNames || perms.isAdmin ? 'block' : 'none';
-            document.getElementById('section-inventory').style.display = perms.canAddStock || perms.isAdmin ? 'block' : 'none';
-            
-            renderUsersTable();
-            renderAdminTables();
-        }
-
-        // ==========================================
-        // 3. REAL-TIME CLOUD SYNC
-        // ==========================================
-        db.collection("tracker").doc("trackerData").onSnapshot((doc) => {
-            if (doc.exists) {
-                const data = doc.data();
-                PRODUCTS = data.PRODUCTS || PRODUCTS;
-                inventory = data.inventory || {};
-                assignments = data.assignments || [];
-                completedAssignments = data.completedAssignments || [];
-                userPermissions = data.userPermissions || {};
-            } else {
-                saveData(); 
-            }
-            
-            if (Object.keys(userPermissions).length === 0 && currentUser) {
-                userPermissions[currentUser.email] = { isAdmin: true, canAssign: true, canManageNames: true, canAddStock: true, canViewRecords: true, canEditRecords: true, canMarkDone: true, canDeleteRecords: true };
-                saveData();
-            }
-            
-            populateDropdowns();
-            renderProductNames();
-            if (document.getElementById('assign-dynamic-container').innerHTML === '') generateDynamicInputs(); 
-            updateDashboard();
-            renderAdminTables();
-            renderRecentAssignments(); 
-            applyPermissionsUI(); 
-        });
-
-        function saveData() {
-            db.collection("tracker").doc("trackerData").set({
-                PRODUCTS, inventory, assignments, completedAssignments, userPermissions
-            });
-        }
-
-        // ==========================================
-        // 4. SCANNER LOGIC (BARCODE & ADVANCED OCR)
-        // ==========================================
-
-        // --- BARCODE SCANNER ---
-        function openBarcodeScanner(targetId, updateCloudInfo = null) {
-            currentScanTarget = targetId;
-            scanUpdateParams = updateCloudInfo;
-            document.getElementById('barcode-overlay').style.display = 'flex';
-            
-            html5QrCode = new Html5Qrcode("barcode-reader");
-            html5QrCode.start(
-                { facingMode: "environment" },
-                { fps: 10, qrbox: { width: 280, height: 120 } }, 
-                (decodedText) => {
-                    const inputField = document.getElementById(currentScanTarget);
-                    if(inputField) {
-                        inputField.value = decodedText;
-                        if(scanUpdateParams) updateSerialNumber(scanUpdateParams.id, scanUpdateParams.index, decodedText);
-                    }
-                    closeBarcodeScanner();
-                },
-                (err) => { }
-            ).catch(err => {
-                alert("Camera error: " + err);
-                closeBarcodeScanner();
-            });
-        }
-
-        function closeBarcodeScanner() {
-            if(html5QrCode) {
-                try {
-                    html5QrCode.stop().then(() => {
-                        html5QrCode.clear();
-                        document.getElementById('barcode-overlay').style.display = 'none';
-                    });
-                } catch(e) { document.getElementById('barcode-overlay').style.display = 'none'; }
-            } else {
-                document.getElementById('barcode-overlay').style.display = 'none';
-            }
-            currentScanTarget = null; scanUpdateParams = null;
-        }
-
-        // --- PHOTO & CROP TEXT SCANNER ---
-        function openTextScanner(targetId, updateCloudInfo = null) {
-            currentScanTarget = targetId;
-            scanUpdateParams = updateCloudInfo;
-            const fileInput = document.getElementById('camera-file-input');
-            fileInput.value = ""; 
-            fileInput.click();
-        }
-
-        function handleCameraInput(event) {
-            const file = event.target.files[0];
-            if(!file) return; 
-            
-            const url = URL.createObjectURL(file);
-            const imageElement = document.getElementById('cropper-image');
-            imageElement.src = url;
-            
-            document.getElementById('cropper-overlay').style.display = 'flex';
-            document.getElementById('ocr-status').innerText = "Ready";
-            document.getElementById('btn-do-ocr').disabled = false;
-
-            if(cropper) cropper.destroy();
-            imageElement.onload = () => {
-                cropper = new Cropper(imageElement, {
-                    viewMode: 1, 
-                    dragMode: 'crop',
-                    autoCropArea: 0.5,
-                    guides: true,
-                    center: true,
-                    highlight: false,
-                    cropBoxMovable: true,
-                    cropBoxResizable: true,
-                    toggleDragModeOnDblclick: false
-                });
-            };
-        }
-
-        function closeCropper() {
-            if(cropper) { cropper.destroy(); cropper = null; }
-            document.getElementById('cropper-overlay').style.display = 'none';
-            document.getElementById('cropper-image').src = "";
-            currentScanTarget = null; scanUpdateParams = null;
-        }
-
-        async function performCropAndOCR() {
-            if(!cropper) return;
-            
-            const btn = document.getElementById('btn-do-ocr');
-            const status = document.getElementById('ocr-status');
-            btn.disabled = true;
-            status.innerText = "⏳ Initializing AI Engine...";
-
-            const originalCanvas = cropper.getCroppedCanvas();
-            
-            // Upscale slightly to smooth out dot-matrix gaps without breaking the contrast
-            const scale = 2;
-            const processCanvas = document.createElement('canvas');
-            processCanvas.width = originalCanvas.width * scale;
-            processCanvas.height = originalCanvas.height * scale;
-            const ctx = processCanvas.getContext('2d');
-            ctx.imageSmoothingEnabled = true; // Natural smoothing
-            ctx.drawImage(originalCanvas, 0, 0, processCanvas.width, processCanvas.height);
-
-            try {
-                // Run standard un-restricted Tesseract
-                const result = await Tesseract.recognize(processCanvas, 'eng', {
-                    logger: m => {
-                        if(m.status === 'recognizing text'){
-                            status.innerText = `⏳ Reading text... ${Math.round(m.progress * 100)}%`;
-                        }
-                    }
-                });
-                
-                // Post-process to remove noise
-                let extractedText = result.data.text.replace(/[^A-Za-z0-9-]/g, '').toUpperCase();
-                
-                if (!extractedText) {
-                    extractedText = result.data.text.trim();
-                }
-                
-                if (!extractedText) {
-                    status.innerText = "❌ Nothing detected. Try taking a closer photo.";
-                    status.style.color = "#dc3545";
-                    btn.disabled = false;
-                    return;
-                }
-
-                const inputField = document.getElementById(currentScanTarget);
-                if(inputField) {
-                    inputField.value = extractedText;
-                    if(scanUpdateParams) {
-                        updateSerialNumber(scanUpdateParams.id, scanUpdateParams.index, extractedText);
-                    }
-                }
-                closeCropper();
-            } catch (err) {
-                status.innerText = "❌ AI Error: " + err.message;
-                status.style.color = "#dc3545";
-                btn.disabled = false;
-            }
-        }
-
-        // ==========================================
-        // 5. USER MANAGEMENT LOGIC
-        // ==========================================
-        function createNewUser() {
-            const email = document.getElementById('new-user-email').value.trim().toLowerCase();
-            const pass = document.getElementById('new-user-pass').value;
-            const isAdmin = document.getElementById('perm-admin').checked;
-            const canAssign = document.getElementById('perm-assign').checked;
-            const canManageNames = document.getElementById('perm-manage-names').checked;
-            const canAddStock = document.getElementById('perm-add-stock').checked;
-            const canViewRecords = document.getElementById('perm-view-records').checked;
-            const canEditRecords = document.getElementById('perm-edit-records').checked;
-            const canMarkDone = document.getElementById('perm-mark-done').checked;
-            const canDeleteRecords = document.getElementById('perm-delete-records').checked;
-
-            if(!email || !pass) return;
-            secondaryApp.auth().createUserWithEmailAndPassword(email, pass)
-                .then(() => {
-                    secondaryApp.auth().signOut();
-                    userPermissions[email] = { isAdmin, canAssign, canManageNames, canAddStock, canViewRecords, canEditRecords, canMarkDone, canDeleteRecords };
-                    saveData(); alert(`Success! Account created for ${email}.`);
-                    document.getElementById('new-user-form').reset();
-                }).catch(err => alert("Error creating user: " + err.message));
-        }
-
-        function resetUserPassword(email) {
-            if(confirm(`Send an automated password reset email to ${email}?`)) {
-                auth.sendPasswordResetEmail(email).then(() => alert("Password reset email sent!")).catch(err => alert("Error: " + err.message));
-            }
-        }
-
-        function removeUserAccess(email) {
-            if(email === currentUser.email) return alert("You cannot remove your own access.");
-            if(confirm(`Are you sure you want to revoke access for ${email}? They will no longer be able to view the app.`)) {
-                delete userPermissions[email]; saveData();
-            }
-        }
-
-        function renderUsersTable() {
-            const tbody = document.getElementById('users-table-body');
-            if(!tbody) return;
-            tbody.innerHTML = '';
-            for (const [email, perms] of Object.entries(userPermissions)) {
-                let permTags = [];
-                if(perms.isAdmin) permTags.push('<span style="color: #dc3545; font-weight: bold;">Super Admin</span>');
-                else {
-                    if(perms.canAssign) permTags.push('Assign');
-                    if(perms.canManageNames) permTags.push('Names');
-                    if(perms.canAddStock) permTags.push('Stock');
-                    if(perms.canViewRecords) permTags.push('ViewRec');
-                    if(perms.canEditRecords) permTags.push('EditRec');
-                    if(perms.canMarkDone) permTags.push('Done');
-                    if(perms.canDeleteRecords) permTags.push('Delete');
-                    if(permTags.length === 0) permTags.push('<em>Read Only (Dashboard)</em>');
-                }
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td><strong>${email}</strong></td><td>${permTags.join(', ')}</td>
-                    <td>
-                        <button class="action-btn" style="padding: 5px 10px; font-size: 12px; background-color: #6c757d;" onclick="resetUserPassword('${email}')">Reset Password</button>
-                        <button class="delete-btn" style="padding: 5px 10px; font-size: 12px;" onclick="removeUserAccess('${email}')">Revoke Access</button>
-                    </td>`;
-                tbody.appendChild(tr);
-            }
-        }
-
-        // ==========================================
-        // 6. CORE APPLICATION LOGIC
-        // ==========================================
-        function switchTab(tabId) {
-            if (currentUser && tabId !== 'home') {
-                const perms = userPermissions[currentUser.email] || {};
-                const hasInvPerms = perms.canAddStock || perms.canManageNames || perms.isAdmin;
-                const hasRecPerms = perms.canViewRecords || perms.isAdmin;
-                
-                if (tabId === 'assign' && !perms.canAssign && !perms.isAdmin) return switchTab('home');
-                if (tabId === 'inventory' && !hasInvPerms) return switchTab('home');
-                if (tabId === 'records' && !hasRecPerms) return switchTab('home');
-                if (tabId === 'users' && !perms.isAdmin) return switchTab('home');
-            }
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-            document.getElementById(tabId).classList.add('active');
-            if (tabId === 'dashboard') updateDashboard();
-        }
-
-        function populateDropdowns() {
-            const dropdowns = ['dash-product', 'admin-assign-product'];
-            dropdowns.forEach(id => {
-                const select = document.getElementById(id);
-                if (!select) return;
-                const currentValue = select.value; 
-                select.innerHTML = '';
-                PRODUCTS.forEach(p => {
-                    const opt = document.createElement('option');
-                    opt.value = p; opt.textContent = p; select.appendChild(opt);
-                });
-                if (PRODUCTS.includes(currentValue)) select.value = currentValue;
-            });
-        }
-        
-        function toggleDashDetails(id, qty) {
-            const vDiv = document.getElementById(`dash-details-version-${id}`);
-            const kDiv = document.getElementById(`dash-details-keycode-${id}`);
-            const sDiv = document.getElementById(`dash-details-serial-${id}`);
-            const soDiv = document.getElementById(`dash-details-so-${id}`);
-            const btn = document.getElementById(`dash-btn-toggle-${id}`);
-            if (sDiv.style.display === 'none') {
-                sDiv.style.display = 'block'; if(soDiv) soDiv.style.display = 'block';
-                if(vDiv) vDiv.style.display = 'block'; if(kDiv) kDiv.style.display = 'block';
-                btn.innerHTML = `▲ Hide Details`; expandedDashRows.add(id);
-            } else {
-                sDiv.style.display = 'none'; if(soDiv) soDiv.style.display = 'none';
-                if(vDiv) vDiv.style.display = 'none'; if(kDiv) kDiv.style.display = 'none';
-                btn.innerHTML = `▼ Show ${qty - 1} More`; expandedDashRows.delete(id);
-            }
-        }
-
-        function toggleAdminDetails(id, qty) {
-            const vDiv = document.getElementById(`admin-details-version-${id}`);
-            const kDiv = document.getElementById(`admin-details-keycode-${id}`);
-            const sDiv = document.getElementById(`admin-details-serial-${id}`);
-            const soDiv = document.getElementById(`admin-details-so-${id}`);
-            const actionDiv = document.getElementById(`admin-details-action-${id}`);
-            const batchDiv = document.getElementById(`admin-batch-actions-${id}`);
-            const btn = document.getElementById(`admin-btn-toggle-${id}`);
-            if (sDiv.style.display === 'none') {
-                sDiv.style.display = 'block'; if(soDiv) soDiv.style.display = 'block';
-                if(vDiv) vDiv.style.display = 'block'; if(kDiv) kDiv.style.display = 'block';
-                if(actionDiv) actionDiv.style.display = 'block'; if(batchDiv) batchDiv.style.display = 'flex';
-                btn.innerHTML = `▲ Hide Details`; expandedAdminRows.add(id);
-            } else {
-                sDiv.style.display = 'none'; if(soDiv) soDiv.style.display = 'none';
-                if(vDiv) vDiv.style.display = 'none'; if(kDiv) kDiv.style.display = 'none';
-                if(actionDiv) actionDiv.style.display = 'none'; if(batchDiv) batchDiv.style.display = 'none';
-                btn.innerHTML = `▼ Show ${qty - 1} More`; expandedAdminRows.delete(id);
+            if (viewName === 'home') {
+                document.getElementById('homeView').style.display = 'flex';
+            } else if (viewName === 'dashboard') {
+                document.getElementById('dashboardView').style.display = 'block';
+                updateDashboard();
+            } else if (viewName === 'assign') {
+                document.getElementById('assignView').style.display = 'block';
+            } else if (viewName === 'stock') {
+                document.getElementById('stockView').style.display = 'block';
+            } else if (viewName === 'records') {
+                document.getElementById('recordsView').style.display = 'block';
+            } else if (viewName === 'users') {
+                document.getElementById('usersView').style.display = 'block';
             }
         }
 
         function updateDashboard() {
-            const selectedProduct = document.getElementById('dash-product').value;
-            const groupBy = document.getElementById('dash-group').value;
-            const globalSearch = (document.getElementById('dash-global-search')?.value || '').toLowerCase();
+            let totalAssigned = assignments.reduce((sum, item) => sum + (Number(item.qty) || 0), 0);
+            document.getElementById('totalQtyAssigned').innerText = totalAssigned;
             
-            const qtyOnHand = inventory[selectedProduct] || 0;
-            const productAssignments = assignments.filter(a => a.product === selectedProduct);
-            const qtyAssigned = productAssignments.reduce((sum, a) => sum + parseInt(a.qty), 0);
-            
-            document.getElementById('dash-qty-on-hand').innerText = qtyOnHand;
-            document.getElementById('dash-qty-assigned').innerText = qtyAssigned;
-            document.getElementById('dash-qty-forecast').innerText = qtyOnHand - qtyAssigned;
-
-            const tbody = document.getElementById('dash-table-body');
+            const tbody = document.getElementById('assignedTableBody');
             tbody.innerHTML = '';
-            
-            let filteredAssignments = [];
-            if (globalSearch) {
-                filteredAssignments = assignments.filter(a => {
-                    const soMatch = a.sos ? a.sos.some(s => s.toLowerCase().includes(globalSearch)) : (a.so && a.so.toLowerCase().includes(globalSearch));
-                    const vMatch = a.versions ? a.versions.some(v => v.toLowerCase().includes(globalSearch)) : (a.version && a.version.toLowerCase().includes(globalSearch));
-                    const kMatch = a.keyCodes ? a.keyCodes.some(k => k.toLowerCase().includes(globalSearch)) : (a.keyCode && a.keyCode.toLowerCase().includes(globalSearch));
-                    const sMatch = a.serials ? a.serials.some(s => s.toLowerCase().includes(globalSearch)) : (a.serial && a.serial.toLowerCase().includes(globalSearch));
-                    const custMatch = a.customer.toLowerCase().includes(globalSearch);
-                    return soMatch || custMatch || vMatch || kMatch || sMatch;
-                });
-            } else {
-                filteredAssignments = assignments.filter(a => a.product === selectedProduct);
+            if (assignments.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">No records found.</td></tr>`;
+                return;
             }
 
-            let sortedAssignments = [...filteredAssignments].sort((a, b) => (b.timestamp || parseInt(b.id)) - (a.timestamp || parseInt(a.id)));
-
-            if (groupBy !== 'none') {
-                sortedAssignments.sort((a, b) => {
-                    let valA = groupBy === 'so' ? ((a.sos && a.sos[0]) || a.so || '').toString().toLowerCase() : (a[groupBy] || '').toString().toLowerCase();
-                    let valB = groupBy === 'so' ? ((b.sos && b.sos[0]) || b.so || '').toString().toLowerCase() : (b[groupBy] || '').toString().toLowerCase();
-                    if (valA < valB) return -1; if (valA > valB) return 1;
-                    return (b.timestamp || parseInt(b.id)) - (a.timestamp || parseInt(a.id));
-                });
-            }
-
-            let currentGroup = null;
-            sortedAssignments.forEach(a => {
-                if (groupBy !== 'none') {
-                    let itemGroup = groupBy === 'so' ? ((a.sos && a.sos[0]) || a.so || 'Unknown') : (a[groupBy] || 'Unknown');
-                    if (itemGroup !== currentGroup) {
-                        currentGroup = itemGroup;
-                        const groupTr = document.createElement('tr');
-                        let groupName = groupBy === 'customer' ? 'Customer' : 'Sales Order (SO)';
-                        groupTr.innerHTML = `<td colspan="9" style="background-color: #d1ecf1; font-weight: bold; color: #0c5460;">${groupName}: ${currentGroup}</td>`;
-                        tbody.appendChild(groupTr);
-                    }
-                }
-
-                const tr = document.createElement('tr');
-                const displayDate = a.dateTimeStr || new Date(parseInt(a.id)).toLocaleString();
-                
-                let currentVersions = a.versions || []; if(!a.versions && a.version) currentVersions = [a.version]; 
-                let currentKeyCodes = a.keyCodes || []; if(!a.keyCodes && a.keyCode) currentKeyCodes = [a.keyCode]; 
-                let currentSerials = a.serials || []; if(!a.serials && a.serial) currentSerials = [a.serial]; 
-                let currentSOs = a.sos || []; if(!a.sos && a.so) currentSOs = Array(a.qty).fill(a.so); 
-                
-                let versionHTML = ''; let keyCodeHTML = ''; let serialHTML = ''; let soHTML = ''; let btnHTML = '';
-                
-                let isExpanded = expandedDashRows.has(a.id);
-                let displayStyle = isExpanded ? 'block' : 'none';
-                let btnText = isExpanded ? '▲ Hide Details' : `▼ Show ${a.qty - 1} More`;
-
-                let vVal0 = currentVersions[0] ? currentVersions[0] : '<span style="color:#888;">N/A</span>';
-                versionHTML += `<div style="margin-bottom: 4px;">${vVal0}</div>`;
-                let kVal0 = currentKeyCodes[0] ? currentKeyCodes[0] : '<span style="color:#888;">N/A</span>';
-                keyCodeHTML += `<div style="margin-bottom: 4px;">${kVal0}</div>`;
-                let sVal0 = currentSerials[0] ? currentSerials[0] : '<span style="color:#888;">N/A</span>';
-                serialHTML += `<div style="margin-bottom: 4px;">${sVal0}</div>`;
-                let soVal0 = currentSOs[0] ? currentSOs[0] : '<span style="color:#888;">N/A</span>';
-                soHTML += `<div style="margin-bottom: 4px;">${soVal0}</div>`;
-                
-                if (a.qty > 1) {
-                    versionHTML += `<div id="dash-details-version-${a.id}" style="display: ${displayStyle};">`;
-                    keyCodeHTML += `<div id="dash-details-keycode-${a.id}" style="display: ${displayStyle};">`;
-                    serialHTML += `<div id="dash-details-serial-${a.id}" style="display: ${displayStyle};">`;
-                    soHTML += `<div id="dash-details-so-${a.id}" style="display: ${displayStyle};">`;
-                    for(let i=1; i < a.qty; i++) {
-                        let vVal = currentVersions[i] ? currentVersions[i] : '<span style="color:#888;">N/A</span>';
-                        versionHTML += `<div style="margin-bottom: 4px; color: #555;">${vVal}</div>`;
-                        let kVal = currentKeyCodes[i] ? currentKeyCodes[i] : '<span style="color:#888;">N/A</span>';
-                        keyCodeHTML += `<div style="margin-bottom: 4px; color: #555;">${kVal}</div>`;
-                        let sVal = currentSerials[i] ? currentSerials[i] : '<span style="color:#888;">N/A</span>';
-                        serialHTML += `<div style="margin-bottom: 4px; color: #555;">${sVal}</div>`;
-                        let soVal = currentSOs[i] ? currentSOs[i] : '<span style="color:#888;">N/A</span>';
-                        soHTML += `<div style="margin-bottom: 4px; color: #555;">${soVal}</div>`;
-                    }
-                    versionHTML += `</div>`; keyCodeHTML += `</div>`; serialHTML += `</div>`; soHTML += `</div>`;
-                    btnHTML = `<button id="dash-btn-toggle-${a.id}" class="toggle-btn" style="width: 100%; white-space: nowrap;" onclick="toggleDashDetails('${a.id}', ${a.qty})">${btnText}</button>`;
-                }
-                
-                let highlightStyle = globalSearch ? 'background-color: #fff9e6;' : '';
+            assignments.forEach(item => {
+                let tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td style="${highlightStyle}"><small style="color: #555;">${displayDate}</small></td>
-                    <td style="${highlightStyle} font-weight: ${globalSearch ? 'bold' : 'normal'};">${a.product}</td>
-                    <td style="${highlightStyle}">${versionHTML}</td>
-                    <td style="${highlightStyle}">${keyCodeHTML}</td>
-                    <td style="${highlightStyle}">${serialHTML}</td>
-                    <td style="${highlightStyle}">${soHTML}</td>
-                    <td style="${highlightStyle}">${a.customer}</td>
-                    <td style="${highlightStyle}">${a.qty}</td>
-                    <td style="${highlightStyle} min-width: 100px;">${btnHTML}</td>
+                    <td>${item.date || 'N/A'}</td>
+                    <td>${item.product || 'N/A'}</td>
+                    <td>${item.serial || 'N/A'}</td>
+                    <td>${item.so || 'N/A'}</td>
+                    <td>${item.customer || 'N/A'}</td>
+                    <td>${item.qty || 1}</td>
                 `;
                 tbody.appendChild(tr);
             });
         }
 
-        function renderProductNames() {
-            const container = document.getElementById('admin-product-names-list');
-            if(!container) return;
-            const perms = (currentUser && userPermissions[currentUser.email]) ? userPermissions[currentUser.email] : {};
-            const canEdit = perms.isAdmin || perms.canManageNames;
-            
-            container.innerHTML = '';
-            PRODUCTS.forEach((p, index) => {
-                const div = document.createElement('div'); div.className = 'name-slot';
-                const readOnlyAttr = canEdit ? '' : 'readonly style="background-color: #e9ecef;"';
-                div.innerHTML = `<label>Slot ${index + 1}</label><input type="text" class="prod-name-input inline-input" value="${p}" ${readOnlyAttr}>`;
-                container.appendChild(div);
-            });
+        function logoutUser() {
+            window.location.reload();
         }
 
-        function addProductSlot() {
-            const container = document.getElementById('admin-product-names-list');
-            const index = container.children.length;
-            const div = document.createElement('div'); div.className = 'name-slot';
-            div.innerHTML = `<label>Slot ${index + 1}</label><input type="text" class="prod-name-input inline-input" value="Product ${index + 1}">`;
-            container.appendChild(div);
-        }
-
-        function saveProductNames() {
-            let newNames = []; let changed = false; let changes = [];
-            document.querySelectorAll('.prod-name-input').forEach((input, i) => {
-                let newName = input.value.trim(); if (!newName) newName = `Product ${i + 1}`; 
-                newNames.push(newName);
-                if (i < PRODUCTS.length && newName !== PRODUCTS[i]) { changes.push({ old: PRODUCTS[i], new: newName }); changed = true; }
-            });
-            if (newNames.length !== PRODUCTS.length) changed = true;
-            
-            if (changed) {
-                changes.forEach(c => { if (inventory[c.old] !== undefined) { inventory[c.new] = inventory[c.old]; delete inventory[c.old]; } });
-                newNames.forEach(n => { if (inventory[n] === undefined) inventory[n] = 0; });
-                assignments.forEach(a => { let change = changes.find(c => c.old === a.product); if (change) a.product = change.new; });
-                PRODUCTS = newNames; saveData(); alert("Products updated successfully!");
-            } else { alert("No changes detected."); }
-        }
-
-        function calcNewTotal(index, currentQty) {
-            const addVal = parseInt(document.getElementById(`add-qty-${index}`).value) || 0;
-            const newTotalEl = document.getElementById(`new-total-${index}`);
-            newTotalEl.innerText = currentQty + addVal;
-            if (addVal > 0) newTotalEl.style.color = '#28a745'; 
-            else if (addVal < 0) newTotalEl.style.color = '#dc3545'; 
-            else newTotalEl.style.color = 'inherit';
-        }
-
-        function confirmInventoryUpdate(product, index) {
-            const addInput = document.getElementById(`add-qty-${index}`);
-            const addVal = parseInt(addInput.value);
-            if (isNaN(addVal) || addVal === 0) return alert("Please enter a valid quantity to add or subtract.");
-            const newQty = (inventory[product] || 0) + addVal;
-            if (newQty < 0) return alert("Error: Total quantity cannot be less than 0.");
-            inventory[product] = newQty; saveData();
-            alert(`Success! ${product} inventory updated by ${addVal}. New Total: ${newQty}`);
-            addInput.value = '';
-        }
-
-        function generateDynamicInputs() {
-            const qty = parseInt(document.getElementById('admin-qty').value) || 1;
-            const container = document.getElementById('assign-dynamic-container');
-            if(!container) return;
-            
-            const isSameSo = document.getElementById('admin-same-so').checked;
-            document.getElementById('admin-master-so').style.display = isSameSo ? 'block' : 'none';
-            
-            const isSameVersion = document.getElementById('admin-same-version').checked;
-            document.getElementById('admin-master-version').style.display = isSameVersion ? 'block' : 'none';
-            
-            const currentVersions = []; const currentKeyCodes = []; const currentSerials = []; const currentSOs = [];
-            for(let i=0; i < container.children.length; i++) {
-                const vInput = document.getElementById(`admin-version-${i}`); if(vInput) currentVersions[i] = vInput.value;
-                const kInput = document.getElementById(`admin-keycode-${i}`); if(kInput) currentKeyCodes[i] = kInput.value;
-                const sInput = document.getElementById(`admin-serial-${i}`); if(sInput) currentSerials[i] = sInput.value;
-                const soInput = document.getElementById(`admin-so-${i}`); if(soInput) currentSOs[i] = soInput.value;
-            }
-            
-            container.innerHTML = '';
-            for(let i=0; i < qty; i++) {
-                let rowHTML = `<div class="dynamic-row">`;
-                
-                if (!isSameVersion) {
-                    rowHTML += `<input type="text" class="inline-input" id="admin-version-${i}" value="${currentVersions[i] || ''}" placeholder="Version ${i+1} (Optional)">`;
+        // Auto-sync with Firestore on startup
+        window.addEventListener('DOMContentLoaded', () => {
+            db.collection("tracker").doc("trackerData").get().then((doc) => {
+                if (doc.exists) {
+                    const data = doc.data();
+                    if (data.assignments) assignments = data.assignments;
+                    if (data.inventory) inventory = data.inventory;
+                    if (data.PRODUCTS) PRODUCTS = data.PRODUCTS;
+                    updateDashboard();
                 }
-                
-                rowHTML += `<input type="text" class="inline-input" id="admin-keycode-${i}" value="${currentKeyCodes[i] || ''}" placeholder="Key Code ${i+1} (Optional)">`;
-                
-                rowHTML += `<div style="display:flex; gap:5px; flex:1; min-width:180px;">
-                                <input type="text" class="inline-input" id="admin-serial-${i}" value="${currentSerials[i] || ''}" placeholder="Serial ${i+1} (Optional)" style="margin:0;">
-                                <button type="button" class="action-btn icon-btn" title="Scan Barcode" onclick="openBarcodeScanner('admin-serial-${i}')">|||</button>
-                                <button type="button" class="action-btn icon-btn" title="Photo & Crop Text" onclick="openTextScanner('admin-serial-${i}')">📷</button>
-                            </div>`;
-                
-                if (!isSameSo) {
-                    rowHTML += `<input type="text" class="inline-input" id="admin-so-${i}" value="${currentSOs[i] || ''}" placeholder="Sales Order ${i+1} (Optional)">`;
-                }
-                
-                rowHTML += `</div>`; container.innerHTML += rowHTML;
-            }
-        }
-
-        function assignOrder() {
-            const product = document.getElementById('admin-assign-product').value;
-            const customer = document.getElementById('admin-customer').value;
-            const qty = parseInt(document.getElementById('admin-qty').value);
-            
-            const isSameSo = document.getElementById('admin-same-so').checked;
-            const masterSo = document.getElementById('admin-master-so').value;
-            
-            const isSameVersion = document.getElementById('admin-same-version').checked;
-            const masterVersion = document.getElementById('admin-master-version').value;
-
-            const versions = []; const keyCodes = []; const serials = []; const sos = [];
-            for(let i=0; i < qty; i++) {
-                
-                if (isSameVersion) versions.push(masterVersion);
-                else { const vInput = document.getElementById(`admin-version-${i}`); versions.push(vInput ? vInput.value : ''); }
-                
-                const kInput = document.getElementById(`admin-keycode-${i}`); keyCodes.push(kInput ? kInput.value : '');
-                const sInput = document.getElementById(`admin-serial-${i}`); serials.push(sInput ? sInput.value : '');
-                
-                if (isSameSo) sos.push(masterSo);
-                else { const soInput = document.getElementById(`admin-so-${i}`); sos.push(soInput ? soInput.value : ''); }
-            }
-
-            const dateObj = new Date();
-            assignments.push({
-                id: Date.now().toString(), product, versions, keyCodes, serials, sos, customer, qty,
-                timestamp: dateObj.getTime(), dateTimeStr: dateObj.toLocaleString()
-            });
-            saveData();
-            
-            document.getElementById('assign-form').reset();
-            document.getElementById('admin-same-so').checked = true; 
-            document.getElementById('admin-same-version').checked = true; 
-            document.getElementById('admin-assign-product').value = product;
-            generateDynamicInputs(); 
-            alert("Order Assigned Successfully!");
-        }
-
-        function updateVersion(id, index, newVal) {
-            const a = assignments.find(a => a.id === id);
-            if (a) { if(!a.versions) a.versions = new Array(a.qty).fill(''); a.versions[index] = newVal; saveData(); }
-        }
-        function updateKeyCode(id, index, newVal) {
-            const a = assignments.find(a => a.id === id);
-            if (a) { if(!a.keyCodes) a.keyCodes = new Array(a.qty).fill(''); a.keyCodes[index] = newVal; saveData(); }
-        }
-        function updateSerialNumber(id, index, newVal) {
-            const a = assignments.find(a => a.id === id);
-            if (a) { if(!a.serials) a.serials = new Array(a.qty).fill(''); a.serials[index] = newVal; saveData(); }
-        }
-        function updateSalesOrder(id, index, newVal) {
-            const a = assignments.find(a => a.id === id);
-            if (a) { if(!a.sos) { a.sos = new Array(a.qty).fill(''); if(a.so) a.sos.fill(a.so); } a.sos[index] = newVal; saveData(); }
-        }
-
-        function updateQuantity(id, newQty) {
-            newQty = parseInt(newQty);
-            if (isNaN(newQty) || newQty < 1) { alert("Quantity must be at least 1."); renderAdminTables(); return; }
-            
-            const a = assignments.find(a => a.id === id);
-            if (a) {
-                const oldQty = a.qty; a.qty = newQty;
-                
-                if(!a.versions) a.versions = new Array(oldQty).fill('');
-                if (newQty > oldQty) a.versions.push(...new Array(newQty - oldQty).fill(''));
-                else a.versions = a.versions.slice(0, newQty);
-                
-                if(!a.keyCodes) a.keyCodes = new Array(oldQty).fill('');
-                if (newQty > oldQty) a.keyCodes.push(...new Array(newQty - oldQty).fill(''));
-                else a.keyCodes = a.keyCodes.slice(0, newQty);
-                
-                if(!a.serials) a.serials = new Array(oldQty).fill('');
-                if (newQty > oldQty) a.serials.push(...new Array(newQty - oldQty).fill(''));
-                else a.serials = a.serials.slice(0, newQty);
-                
-                if(!a.sos) { a.sos = new Array(oldQty).fill(''); if(a.so) a.sos.fill(a.so); }
-                if (newQty > oldQty) a.sos.push(...new Array(newQty - oldQty).fill(a.sos[0] || ''));
-                else a.sos = a.sos.slice(0, newQty);
-                
-                saveData();
-            }
-        }
-
-        function completeSingleUnit(id, index) {
-            if(!confirm("Mark this specific unit as Done? This will deduct 1 from On Hand inventory and move this record to History.")) return;
-            const aIdx = assignments.findIndex(a => a.id === id);
-            if (aIdx > -1) {
-                const a = assignments[aIdx];
-                inventory[a.product] = Math.max(0, (inventory[a.product] || 0) - 1);
-                
-                completedAssignments.push({
-                    id: a.id + '-' + Date.now(), product: a.product,
-                    version: (a.versions && a.versions[index]) ? a.versions[index] : '',
-                    keyCode: (a.keyCodes && a.keyCodes[index]) ? a.keyCodes[index] : '',
-                    serial: (a.serials && a.serials[index]) ? a.serials[index] : '',
-                    so: (a.sos && a.sos[index]) ? a.sos[index] : '',
-                    customer: a.customer, qty: 1, timestamp: a.timestamp,
-                    dateTimeStr: a.dateTimeStr, completedAtStr: new Date().toLocaleString()
-                });
-                
-                if(a.qty === 1) assignments.splice(aIdx, 1);
-                else { 
-                    a.qty -= 1; 
-                    if(a.versions) a.versions.splice(index, 1);
-                    if(a.keyCodes) a.keyCodes.splice(index, 1);
-                    if(a.serials) a.serials.splice(index, 1); 
-                    if(a.sos) a.sos.splice(index, 1); 
-                }
-                saveData();
-            }
-        }
-
-        function deleteSingleUnit(id, index) {
-            if(!confirm("Delete this specific unit without affecting inventory?")) return;
-            const aIdx = assignments.findIndex(a => a.id === id);
-            if (aIdx > -1) {
-                const a = assignments[aIdx];
-                if(a.qty === 1) assignments.splice(aIdx, 1);
-                else { 
-                    a.qty -= 1; 
-                    if(a.versions) a.versions.splice(index, 1);
-                    if(a.keyCodes) a.keyCodes.splice(index, 1);
-                    if(a.serials) a.serials.splice(index, 1); 
-                    if(a.sos) a.sos.splice(index, 1); 
-                }
-                saveData();
-            }
-        }
-
-        function completeAllUnits(id) {
-            if(!confirm("Mark ALL units in this batch as Done? This deducts the total from On Hand inventory.")) return;
-            const aIdx = assignments.findIndex(a => a.id === id);
-            if (aIdx > -1) {
-                const a = assignments[aIdx];
-                inventory[a.product] = Math.max(0, (inventory[a.product] || 0) - a.qty);
-                for(let i = 0; i < a.qty; i++) {
-                    completedAssignments.push({
-                        id: a.id + '-bulk-' + Date.now() + '-' + i, product: a.product,
-                        version: (a.versions && a.versions[i]) ? a.versions[i] : '',
-                        keyCode: (a.keyCodes && a.keyCodes[i]) ? a.keyCodes[i] : '',
-                        serial: (a.serials && a.serials[i]) ? a.serials[i] : '',
-                        so: (a.sos && a.sos[i]) ? a.sos[i] : '', customer: a.customer, qty: 1,
-                        timestamp: a.timestamp, dateTimeStr: a.dateTimeStr, completedAtStr: new Date().toLocaleString()
-                    });
-                }
-                assignments.splice(aIdx, 1); saveData();
-            }
-        }
-
-        function deleteAllUnits(id) {
-            if(confirm("Delete ALL units in this batch without affecting inventory?")) {
-                const aIdx = assignments.findIndex(a => a.id === id);
-                if (aIdx > -1) { assignments.splice(aIdx, 1); saveData(); }
-            }
-        }
-
-        function renderRecentAssignments() {
-            const recentBody = document.getElementById('assign-recent-table-body');
-            if(!recentBody) return;
-            recentBody.innerHTML = '';
-            let sorted = [...assignments].sort((a, b) => (b.timestamp || parseInt(b.id)) - (a.timestamp || parseInt(a.id)));
-            let top10 = sorted.slice(0, 10);
-
-            top10.forEach(a => {
-                const tr = document.createElement('tr');
-                const displayDate = a.dateTimeStr || new Date(parseInt(a.id)).toLocaleString();
-                
-                let vVal = (a.versions && a.versions[0]) ? a.versions[0] : (a.version || '<span style="color:#888;">N/A</span>');
-                let kVal = (a.keyCodes && a.keyCodes[0]) ? a.keyCodes[0] : (a.keyCode || '<span style="color:#888;">N/A</span>');
-                let sVal = (a.serials && a.serials[0]) ? a.serials[0] : (a.serial || '<span style="color:#888;">N/A</span>');
-                let soVal = (a.sos && a.sos[0]) ? a.sos[0] : (a.so || '<span style="color:#888;">N/A</span>');
-                
-                if (a.qty > 1) {
-                    vVal += ` <span style="color:#888; font-size: 11px; margin-left: 5px;">(+${a.qty - 1} more)</span>`;
-                    kVal += ` <span style="color:#888; font-size: 11px; margin-left: 5px;">(+${a.qty - 1} more)</span>`;
-                    sVal += ` <span style="color:#888; font-size: 11px; margin-left: 5px;">(+${a.qty - 1} more)</span>`;
-                    soVal += ` <span style="color:#888; font-size: 11px; margin-left: 5px;">(+${a.qty - 1} more)</span>`;
-                }
-
-                tr.innerHTML = `
-                    <td><small style="color: #555;">${displayDate}</small></td>
-                    <td><strong>${a.product}</strong></td>
-                    <td>${vVal}</td>
-                    <td>${kVal}</td>
-                    <td>${sVal}</td>
-                    <td>${soVal}</td>
-                    <td>${a.customer}</td>
-                    <td><strong>${a.qty}</strong></td>
-                `;
-                recentBody.appendChild(tr);
-            });
-        }
-
-        function renderAdminTables() {
-            const invBody = document.getElementById('admin-inv-table-body');
-            if(!invBody) return;
-            invBody.innerHTML = '';
-            
-            const perms = (currentUser && userPermissions[currentUser.email]) ? userPermissions[currentUser.email] : {};
-            const isAd = perms.isAdmin;
-            const canEditRec = isAd || perms.canEditRecords;
-            const canDone = isAd || perms.canMarkDone;
-            const canDel = isAd || perms.canDeleteRecords;
-
-            PRODUCTS.forEach((p, index) => {
-                const currentQty = inventory[p] || 0;
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${p}</td><td>${currentQty}</td>
-                    <td><input type="number" id="add-qty-${index}" class="inline-input" style="width: 80px; min-width: 80px; padding: 8px;" oninput="calcNewTotal(${index}, ${currentQty})" placeholder="e.g. 5"></td>
-                    <td><strong id="new-total-${index}">${currentQty}</strong></td>
-                    <td><button class="action-btn" style="padding: 6px 12px; font-size: 13px;" onclick="confirmInventoryUpdate('${p}', ${index})">Confirm</button></td>
-                `;
-                invBody.appendChild(tr);
-            });
-
-            const assignBody = document.getElementById('admin-assignments-table-body');
-            assignBody.innerHTML = '';
-            const filterText = (document.getElementById('admin-filter')?.value || '').toLowerCase();
-            const groupBy = document.getElementById('admin-group').value;
-            
-            let sortedAssignments = [...assignments].sort((a, b) => (b.timestamp || parseInt(b.id)) - (a.timestamp || parseInt(a.id)));
-            if (groupBy !== 'none') {
-                sortedAssignments.sort((a, b) => {
-                    let valA = groupBy === 'so' ? ((a.sos && a.sos[0]) || a.so || '').toString().toLowerCase() : (a[groupBy] || '').toString().toLowerCase();
-                    let valB = groupBy === 'so' ? ((b.sos && b.sos[0]) || b.so || '').toString().toLowerCase() : (b[groupBy] || '').toString().toLowerCase();
-                    if (valA < valB) return -1; if (valA > valB) return 1; return (b.timestamp || parseInt(b.id)) - (a.timestamp || parseInt(a.id));
-                });
-            }
-
-            let filteredAssignments = sortedAssignments.filter(a => {
-                const displayDate = a.dateTimeStr || new Date(parseInt(a.id)).toLocaleString();
-                const versionMatch = a.versions ? a.versions.some(v => v.toLowerCase().includes(filterText)) : (a.version && a.version.toLowerCase().includes(filterText));
-                const keyMatch = a.keyCodes ? a.keyCodes.some(k => k.toLowerCase().includes(filterText)) : (a.keyCode && a.keyCode.toLowerCase().includes(filterText));
-                const serialMatch = a.serials ? a.serials.some(s => s.toLowerCase().includes(filterText)) : (a.serial && a.serial.toLowerCase().includes(filterText));
-                const soMatch = a.sos ? a.sos.some(s => s.toLowerCase().includes(filterText)) : (a.so && a.so.toLowerCase().includes(filterText));
-                return (a.product.toLowerCase().includes(filterText) || versionMatch || keyMatch || serialMatch || soMatch || a.customer.toLowerCase().includes(filterText) || displayDate.toLowerCase().includes(filterText));
-            });
-
-            let currentGroup = null;
-            filteredAssignments.forEach(a => {
-                if (groupBy !== 'none') {
-                    let itemGroup = groupBy === 'so' ? ((a.sos && a.sos[0]) || a.so || 'Unknown') : (a[groupBy] || 'Unknown');
-                    if (itemGroup !== currentGroup) {
-                        currentGroup = itemGroup; const groupTr = document.createElement('tr');
-                        groupTr.innerHTML = `<td colspan="10" style="background-color: #d1ecf1; font-weight: bold; color: #0c5460;">${groupBy === 'customer' ? 'Customer' : (groupBy === 'so' ? 'Sales Order (SO)' : 'Product')}: ${currentGroup}</td>`;
-                        assignBody.appendChild(groupTr);
-                    }
-                }
-
-                const tr = document.createElement('tr');
-                const displayDate = a.dateTimeStr || new Date(parseInt(a.id)).toLocaleString();
-                let currentVersions = a.versions || []; if(!a.versions && a.version) currentVersions = [a.version]; 
-                let currentKeyCodes = a.keyCodes || []; if(!a.keyCodes && a.keyCode) currentKeyCodes = [a.keyCode]; 
-                let currentSerials = a.serials || []; if(!a.serials && a.serial) currentSerials = [a.serial]; 
-                let currentSOs = a.sos || []; if(!a.sos && a.so) currentSOs = Array(a.qty).fill(a.so); 
-                
-                let versionHTML = ''; let keyCodeHTML = ''; let serialHTML = ''; let soHTML = ''; let actionHTML = ''; let btnHTML = '';
-                let isExpanded = expandedAdminRows.has(a.id);
-                let displayStyle = isExpanded ? 'block' : 'none';
-                let batchStyle = isExpanded ? 'flex' : 'none';
-                let btnText = isExpanded ? '▲ Hide Details' : `▼ Show ${a.qty - 1} More`;
-
-                const readOnlyAttr = canEditRec ? '' : 'readonly style="background-color: #e9ecef; color: #6c757d; border-color: #ddd;"';
-
-                let vVal0 = currentVersions[0] || '';
-                versionHTML += `<input type="text" class="inline-input" style="display:block; margin-bottom:4px;" value="${vVal0}" ${canEditRec ? `onchange="updateVersion('${a.id}', 0, this.value)"` : ''} placeholder="Ver 1..." ${readOnlyAttr}>`;
-                
-                let kVal0 = currentKeyCodes[0] || '';
-                keyCodeHTML += `<input type="text" class="inline-input" style="display:block; margin-bottom:4px;" value="${kVal0}" ${canEditRec ? `onchange="updateKeyCode('${a.id}', 0, this.value)"` : ''} placeholder="Key 1..." ${readOnlyAttr}>`;
-                
-                let sVal0 = currentSerials[0] || '';
-                serialHTML += `<div style="display:flex; gap:5px; margin-bottom:4px;">
-                                <input type="text" class="inline-input" style="margin:0;" id="scan-edit-${a.id}-0" value="${sVal0}" ${canEditRec ? `onchange="updateSerialNumber('${a.id}', 0, this.value)"` : ''} placeholder="Serial 1..." ${readOnlyAttr}>
-                                ${canEditRec ? `<button type="button" class="action-btn icon-btn" title="Scan Barcode" onclick="openBarcodeScanner('scan-edit-${a.id}-0', {id: '${a.id}', index: 0})">|||</button>
-                                                <button type="button" class="action-btn icon-btn" title="Photo & Crop Text" onclick="openTextScanner('scan-edit-${a.id}-0', {id: '${a.id}', index: 0})">📷</button>` : ''}
-                               </div>`;
-                               
-                let soVal0 = currentSOs[0] || '';
-                soHTML += `<input type="text" class="inline-input" style="display:block; margin-bottom:4px;" value="${soVal0}" ${canEditRec ? `onchange="updateSalesOrder('${a.id}', 0, this.value)"` : ''} placeholder="SO 1..." ${readOnlyAttr}>`;
-                
-                actionHTML += `<div style="display: flex; gap: 5px; height: 32px; margin-bottom: 4px;">`;
-                if(canDone) actionHTML += `<button class="done-btn icon-btn" title="Mark this unit as done" onclick="completeSingleUnit('${a.id}', 0)">✔️</button>`;
-                if(canDel) actionHTML += `<button class="delete-btn icon-btn" title="Delete this unit" onclick="deleteSingleUnit('${a.id}', 0)">🗑️</button>`;
-                actionHTML += `</div>`;
-
-                if (a.qty > 1) {
-                    versionHTML += `<div id="admin-details-version-${a.id}" style="display: ${displayStyle};">`;
-                    keyCodeHTML += `<div id="admin-details-keycode-${a.id}" style="display: ${displayStyle};">`;
-                    serialHTML += `<div id="admin-details-serial-${a.id}" style="display: ${displayStyle};">`;
-                    soHTML += `<div id="admin-details-so-${a.id}" style="display: ${displayStyle};">`;
-                    actionHTML += `<div id="admin-details-action-${a.id}" style="display: ${displayStyle};">`;
-                    
-                    for(let i=1; i < a.qty; i++) {
-                        let vVal = currentVersions[i] || '';
-                        versionHTML += `<input type="text" class="inline-input" style="display:block; margin-bottom:4px;" value="${vVal}" ${canEditRec ? `onchange="updateVersion('${a.id}',${i}, this.value)"` : ''} placeholder="Ver ${i+1}..." ${readOnlyAttr}>`;
-                        
-                        let kVal = currentKeyCodes[i] || '';
-                        keyCodeHTML += `<input type="text" class="inline-input" style="display:block; margin-bottom:4px;" value="${kVal}" ${canEditRec ? `onchange="updateKeyCode('${a.id}',${i}, this.value)"` : ''} placeholder="Key ${i+1}..." ${readOnlyAttr}>`;
-                        
-                        let sVal = currentSerials[i] || '';
-                        serialHTML += `<div style="display:flex; gap:5px; margin-bottom:4px;">
-                                        <input type="text" class="inline-input" style="margin:0;" id="scan-edit-${a.id}-${i}" value="${sVal}" ${canEditRec ? `onchange="updateSerialNumber('${a.id}',${i}, this.value)"` : ''} placeholder="Serial ${i+1}..." ${readOnlyAttr}>
-                                        ${canEditRec ? `<button type="button" class="action-btn icon-btn" title="Scan Barcode" onclick="openBarcodeScanner('scan-edit-${a.id}-${i}', {id: '${a.id}', index:${i}})">|||</button>
-                                                        <button type="button" class="action-btn icon-btn" title="Photo & Crop Text" onclick="openTextScanner('scan-edit-${a.id}-${i}', {id: '${a.id}', index:${i}})">📷</button>` : ''}
-                                       </div>`;
-                                       
-                        let soVal = currentSOs[i] || '';
-                        soHTML += `<input type="text" class="inline-input" style="display:block; margin-bottom:4px;" value="${soVal}" ${canEditRec ? `onchange="updateSalesOrder('${a.id}',${i}, this.value)"` : ''} placeholder="SO ${i+1}..." ${readOnlyAttr}>`;
-                        
-                        actionHTML += `<div style="display: flex; gap: 5px; height: 32px; margin-bottom: 4px;">`;
-                        if(canDone) actionHTML += `<button class="done-btn icon-btn" title="Mark this unit as done" onclick="completeSingleUnit('${a.id}', ${i})">✔️</button>`;
-                        if(canDel) actionHTML += `<button class="delete-btn icon-btn" title="Delete this unit" onclick="deleteSingleUnit('${a.id}', ${i})">🗑️</button>`;
-                        actionHTML += `</div>`;
-                    }
-                    versionHTML += `</div>`; keyCodeHTML += `</div>`; serialHTML += `</div>`; soHTML += `</div>`; actionHTML += `</div>`;
-                    
-                    btnHTML = `
-                        <button id="admin-btn-toggle-${a.id}" class="toggle-btn" style="white-space: nowrap; width: 100%;" onclick="toggleAdminDetails('${a.id}', ${a.qty})">${btnText}</button>
-                        <div id="admin-batch-actions-${a.id}" class="batch-actions-row" style="display: ${batchStyle};">
-                    `;
-                    if(canDone) btnHTML += `<button class="done-btn icon-btn" style="width: 100%;" title="Done All (${a.qty})" onclick="completeAllUnits('${a.id}')">✔️ All</button>`;
-                    if(canDel) btnHTML += `<button class="delete-btn icon-btn" style="width: 100%;" title="Delete All (${a.qty})" onclick="deleteAllUnits('${a.id}')">🗑️ All</button>`;
-                    btnHTML += `</div>`;
-                }
-
-                tr.innerHTML = `
-                    <td><small style="color: #555;">${displayDate}</small></td>
-                    <td>${a.product}</td>
-                    <td>${versionHTML}</td>
-                    <td>${keyCodeHTML}</td>
-                    <td>${serialHTML}</td>
-                    <td>${soHTML}</td>
-                    <td>${a.customer}</td>
-                    <td><input type="number" class="inline-input" style="width: 60px; min-width: 60px; height: 32px;" value="${a.qty}" ${canEditRec ? `onchange="updateQuantity('${a.id}', this.value)"` : ''} min="1" ${readOnlyAttr}></td>
-                    <td style="min-width: 120px; vertical-align: top;">${btnHTML}</td>
-                    <td style="white-space: nowrap; vertical-align: top;">${actionHTML}</td>
-                `;
-                assignBody.appendChild(tr);
-            });
-        }
+            }).catch(err => console.log("Cloud sync note:", err));
+        });
     </script>
 </body>
 </html>
