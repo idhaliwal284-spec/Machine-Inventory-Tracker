@@ -119,7 +119,18 @@
         #scanner-box {
             background: white; padding: 20px; border-radius: 8px; width: 90%; max-width: 500px; text-align: center;
         }
-        #camera-stream { width: 100%; max-height: 350px; background: #000; border-radius: 4px; object-fit: cover; margin-bottom: 10px; }
+        #camera-wrapper {
+            position: relative; overflow: hidden; border-radius: 4px; margin-bottom: 15px; width: 100%; background: #000;
+        }
+        #camera-stream {
+            width: 100%; display: block; max-height: 400px; object-fit: cover;
+        }
+        /* The green targeting box */
+        #scanner-target-box {
+            position: absolute; top: 35%; left: 10%; width: 80%; height: 30%;
+            border: 3px solid #28a745; box-shadow: 0 0 0 9999px rgba(0,0,0,0.5);
+            pointer-events: none; border-radius: 4px;
+        }
     </style>
 
     <!-- FIREBASE SCRIPTS -->
@@ -145,16 +156,21 @@
         </div>
     </div>
 
-    <!-- TEXT SCANNER OVERLAY -->
+    <!-- ADVANCED TEXT SCANNER OVERLAY -->
     <div id="scanner-overlay">
         <div id="scanner-box">
             <h3 style="margin-top:0; color: var(--primary);">📷 Lens Text Scanner</h3>
-            <p style="font-size: 13px; color: #666; margin-top: 0; margin-bottom: 10px;">Center the serial number in the view.</p>
+            <p style="font-size: 13px; color: #666; margin-top: 0; margin-bottom: 10px;">Fit the text exactly inside the green box.</p>
             
-            <video id="camera-stream" autoplay playsinline></video>
+            <div id="camera-wrapper">
+                <video id="camera-stream" autoplay playsinline></video>
+                <div id="scanner-target-box"></div>
+            </div>
+            
+            <!-- Hidden canvas used for high-contrast cropping -->
             <canvas id="camera-canvas" style="display: none;"></canvas>
             
-            <div id="scanner-status" style="font-size: 14px; font-weight: bold; color: #333; height: 20px; margin-bottom: 10px;">Ready</div>
+            <div id="scanner-status" style="font-size: 14px; font-weight: bold; color: #333; height: 20px; margin-bottom: 15px;">Ready</div>
             
             <div style="display: flex; gap: 10px;">
                 <button id="btn-capture" class="action-btn" style="flex: 2; font-weight: bold; font-size: 16px;" onclick="captureAndScan()">📸 Capture Text</button>
@@ -514,18 +530,16 @@
             
             const perms = userPermissions[currentUser.email] || {};
             
-            // Hide/Show Home Screen Grid Buttons
             document.getElementById('btn-home-assign').style.display = perms.canAssign || perms.isAdmin ? 'flex' : 'none';
             document.getElementById('btn-home-inventory').style.display = perms.canAddStock || perms.canManageNames || perms.isAdmin ? 'flex' : 'none';
             document.getElementById('btn-home-records').style.display = perms.canViewRecords || perms.isAdmin ? 'flex' : 'none';
             document.getElementById('btn-home-users').style.display = perms.isAdmin ? 'flex' : 'none';
             
-            // Hide/Show Internal Sections
             document.getElementById('section-products').style.display = perms.canManageNames || perms.isAdmin ? 'block' : 'none';
             document.getElementById('section-inventory').style.display = perms.canAddStock || perms.isAdmin ? 'block' : 'none';
             
             renderUsersTable();
-            renderAdminTables(); // Force re-render of inputs based on new edit permissions
+            renderAdminTables();
         }
 
         // ==========================================
@@ -571,7 +585,7 @@
         }
 
         // ==========================================
-        // 4. LENS / OCR TEXT SCANNER LOGIC
+        // 4. LENS / OCR TEXT SCANNER LOGIC (IMPROVED)
         // ==========================================
         async function openScanner(targetId, updateCloudInfo = null) {
             currentScanTarget = targetId;
@@ -592,7 +606,7 @@
                     video: { facingMode: "environment" }
                 });
                 video.srcObject = cameraStream;
-                status.innerText = "Aim at text and click 'Capture Text'.";
+                status.innerText = "Fit text inside the green box & capture.";
             } catch (err) {
                 status.innerText = "Camera error: " + err.message;
                 status.style.color = "#dc3545";
@@ -618,16 +632,40 @@
             const status = document.getElementById('scanner-status');
             const btn = document.getElementById('btn-capture');
 
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            // 1. Calculate the physical dimensions of the green target box relative to the video
+            // The green box is CSS: top:35%, left:10%, width:80%, height:30%
+            const cropX = video.videoWidth * 0.10;
+            const cropY = video.videoHeight * 0.35;
+            const cropWidth = video.videoWidth * 0.80;
+            const cropHeight = video.videoHeight * 0.30;
 
-            status.innerText = "⏳ Loading AI Engine... (may take a moment on first scan)";
-            status.style.color = "#0056b3"; // FIXED SYNTAX ERROR HERE
+            // 2. Size the hidden canvas to ONLY the cropped area
+            canvas.width = cropWidth;
+            canvas.height = cropHeight;
+            const ctx = canvas.getContext('2d');
+            
+            // 3. Draw only the targeted region onto the canvas
+            ctx.drawImage(video, cropX, cropY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
+
+            // 4. Image Processing: Convert to high contrast Black & White to help the AI
+            const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            for (let i = 0; i < imgData.data.length; i += 4) {
+                const avg = (imgData.data[i] + imgData.data[i + 1] + imgData.data[i + 2]) / 3;
+                // Thresholding for B&W
+                if (avg > 120) {
+                    imgData.data[i] = 255; imgData.data[i+1] = 255; imgData.data[i+2] = 255;
+                } else {
+                    imgData.data[i] = 0; imgData.data[i+1] = 0; imgData.data[i+2] = 0;
+                }
+            }
+            ctx.putImageData(imgData, 0, 0);
+
+            status.innerText = "⏳ Reading text...";
+            status.style.color = "#0056b3";
             btn.disabled = true;
 
             try {
+                // 5. Run Tesseract ONLY on the cropped, B&W canvas
                 const result = await Tesseract.recognize(canvas, 'eng', {
                     logger: m => {
                         if(m.status === 'recognizing text'){
@@ -636,11 +674,11 @@
                     }
                 });
                 
-                // Clean up extracted text (replace line breaks and extra spaces)
-                let extractedText = result.data.text.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
+                // 6. Aggressive Cleanup Regex: Strip everything except Letters, Numbers, and Dashes
+                let extractedText = result.data.text.replace(/[^a-zA-Z0-9-]/g, '').toUpperCase();
                 
-                if (!extractedText) {
-                    status.innerText = "❌ No text found. Please try again.";
+                if (!extractedText || extractedText.length < 3) {
+                    status.innerText = "❌ Text unclear. Please try again.";
                     status.style.color = "#dc3545";
                     btn.disabled = false;
                     return;
@@ -1000,7 +1038,7 @@
                 
                 rowHTML += `<input type="text" class="inline-input" id="admin-keycode-${i}" value="${currentKeyCodes[i] || ''}" placeholder="Key Code ${i+1} (Optional)">`;
                 
-                // Add the camera button next to the Serial Number input
+                // Camera Scanner Target for Assign Tab
                 rowHTML += `<div style="display:flex; gap:5px; flex:1; min-width:130px;">
                                 <input type="text" class="inline-input" id="admin-serial-${i}" value="${currentSerials[i] || ''}" placeholder="Serial ${i+1} (Optional)" style="margin:0;">
                                 <button type="button" class="action-btn icon-btn" title="Scan Text" onclick="openScanner('admin-serial-${i}')">📷</button>
