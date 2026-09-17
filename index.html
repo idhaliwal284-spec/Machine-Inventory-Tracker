@@ -502,7 +502,6 @@
         // Scanner State Variables
         let currentScanTarget = null;
         let scanUpdateParams = null;
-        
         let html5QrCode = null;
         let cropper = null;
 
@@ -544,13 +543,11 @@
             
             const perms = userPermissions[currentUser.email] || {};
             
-            // Hide/Show Home Screen Grid Buttons
             document.getElementById('btn-home-assign').style.display = perms.canAssign || perms.isAdmin ? 'flex' : 'none';
             document.getElementById('btn-home-inventory').style.display = perms.canAddStock || perms.canManageNames || perms.isAdmin ? 'flex' : 'none';
             document.getElementById('btn-home-records').style.display = perms.canViewRecords || perms.isAdmin ? 'flex' : 'none';
             document.getElementById('btn-home-users').style.display = perms.isAdmin ? 'flex' : 'none';
             
-            // Hide/Show Internal Sections
             document.getElementById('section-products').style.display = perms.canManageNames || perms.isAdmin ? 'block' : 'none';
             document.getElementById('section-inventory').style.display = perms.canAddStock || perms.isAdmin ? 'block' : 'none';
             
@@ -562,22 +559,15 @@
         // 3. REAL-TIME CLOUD SYNC
         // ==========================================
         db.collection("tracker").doc("trackerData").onSnapshot((doc) => {
-            const localAssignments = JSON.parse(localStorage.getItem('asset_assignments')) || [];
-            if (localAssignments.length > 0 && !window.hasRecoveredData) {
-                PRODUCTS = JSON.parse(localStorage.getItem('asset_products')) || Array.from({length: 9}, (_, i) => `Product ${i + 1}`);
-                inventory = JSON.parse(localStorage.getItem('asset_inventory')) || {};
-                assignments = localAssignments;
-                completedAssignments = JSON.parse(localStorage.getItem('asset_completed')) || [];
-                if (doc.exists) userPermissions = doc.data().userPermissions || {};
-                
-                window.hasRecoveredData = true; saveData(); 
-            } else if (doc.exists) {
+            if (doc.exists) {
                 const data = doc.data();
                 PRODUCTS = data.PRODUCTS || PRODUCTS;
                 inventory = data.inventory || {};
                 assignments = data.assignments || [];
                 completedAssignments = data.completedAssignments || [];
                 userPermissions = data.userPermissions || {};
+            } else {
+                saveData(); 
             }
             
             if (Object.keys(userPermissions).length === 0 && currentUser) {
@@ -601,7 +591,7 @@
         }
 
         // ==========================================
-        // 4. SCANNER LOGIC (BARCODE & OCR)
+        // 4. SCANNER LOGIC (BARCODE & ADVANCED OCR)
         // ==========================================
 
         // --- BARCODE SCANNER ---
@@ -643,7 +633,7 @@
             currentScanTarget = null; scanUpdateParams = null;
         }
 
-        // --- PHOTO & CROP TEXT SCANNER (NATURAL OCR) ---
+        // --- PHOTO & CROP TEXT SCANNER ---
         function openTextScanner(targetId, updateCloudInfo = null) {
             currentScanTarget = targetId;
             scanUpdateParams = updateCloudInfo;
@@ -695,20 +685,19 @@
             btn.disabled = true;
             status.innerText = "⏳ Initializing AI Engine...";
 
-            // 1. Get raw cropped area
             const originalCanvas = cropper.getCroppedCanvas();
             
-            // 2. UPSCALE slightly to assist with pixelation without destroying the image
+            // Upscale slightly to smooth out dot-matrix gaps without breaking the contrast
             const scale = 2;
             const processCanvas = document.createElement('canvas');
             processCanvas.width = originalCanvas.width * scale;
             processCanvas.height = originalCanvas.height * scale;
             const ctx = processCanvas.getContext('2d');
-            ctx.imageSmoothingEnabled = true; 
+            ctx.imageSmoothingEnabled = true; // Natural smoothing
             ctx.drawImage(originalCanvas, 0, 0, processCanvas.width, processCanvas.height);
 
             try {
-                // 3. Run Standard Tesseract (No restrictive rules that make it fail)
+                // Run standard un-restricted Tesseract
                 const result = await Tesseract.recognize(processCanvas, 'eng', {
                     logger: m => {
                         if(m.status === 'recognizing text'){
@@ -717,10 +706,9 @@
                     }
                 });
                 
-                // 4. Post-Process Cleanup: Keep letters, numbers, and dashes.
+                // Post-process to remove noise
                 let extractedText = result.data.text.replace(/[^A-Za-z0-9-]/g, '').toUpperCase();
                 
-                // 5. Fallback: If the strict regex stripped everything, just give the user what it saw
                 if (!extractedText) {
                     extractedText = result.data.text.trim();
                 }
@@ -1396,20 +1384,20 @@
                     
                     for(let i=1; i < a.qty; i++) {
                         let vVal = currentVersions[i] || '';
-                        versionHTML += `<input type="text" class="inline-input" style="display:block; margin-bottom:4px;" value="${vVal}" ${canEditRec ? `onchange="updateVersion('${a.id}', ${i}, this.value)"` : ''} placeholder="Ver ${i+1}..." ${readOnlyAttr}>`;
+                        versionHTML += `<input type="text" class="inline-input" style="display:block; margin-bottom:4px;" value="${vVal}" ${canEditRec ? `onchange="updateVersion('${a.id}',${i}, this.value)"` : ''} placeholder="Ver ${i+1}..." ${readOnlyAttr}>`;
                         
                         let kVal = currentKeyCodes[i] || '';
-                        keyCodeHTML += `<input type="text" class="inline-input" style="display:block; margin-bottom:4px;" value="${kVal}" ${canEditRec ? `onchange="updateKeyCode('${a.id}', ${i}, this.value)"` : ''} placeholder="Key ${i+1}..." ${readOnlyAttr}>`;
+                        keyCodeHTML += `<input type="text" class="inline-input" style="display:block; margin-bottom:4px;" value="${kVal}" ${canEditRec ? `onchange="updateKeyCode('${a.id}',${i}, this.value)"` : ''} placeholder="Key ${i+1}..." ${readOnlyAttr}>`;
                         
                         let sVal = currentSerials[i] || '';
                         serialHTML += `<div style="display:flex; gap:5px; margin-bottom:4px;">
-                                        <input type="text" class="inline-input" style="margin:0;" id="scan-edit-${a.id}-${i}" value="${sVal}" ${canEditRec ? `onchange="updateSerialNumber('${a.id}', ${i}, this.value)"` : ''} placeholder="Serial ${i+1}..." ${readOnlyAttr}>
-                                        ${canEditRec ? `<button type="button" class="action-btn icon-btn" title="Scan Barcode" onclick="openBarcodeScanner('scan-edit-${a.id}-${i}', {id: '${a.id}', index: ${i}})">|||</button>
-                                                        <button type="button" class="action-btn icon-btn" title="Photo & Crop Text" onclick="openTextScanner('scan-edit-${a.id}-${i}', {id: '${a.id}', index: ${i}})">📷</button>` : ''}
+                                        <input type="text" class="inline-input" style="margin:0;" id="scan-edit-${a.id}-${i}" value="${sVal}" ${canEditRec ? `onchange="updateSerialNumber('${a.id}',${i}, this.value)"` : ''} placeholder="Serial ${i+1}..." ${readOnlyAttr}>
+                                        ${canEditRec ? `<button type="button" class="action-btn icon-btn" title="Scan Barcode" onclick="openBarcodeScanner('scan-edit-${a.id}-${i}', {id: '${a.id}', index:${i}})">|||</button>
+                                                        <button type="button" class="action-btn icon-btn" title="Photo & Crop Text" onclick="openTextScanner('scan-edit-${a.id}-${i}', {id: '${a.id}', index:${i}})">📷</button>` : ''}
                                        </div>`;
                                        
                         let soVal = currentSOs[i] || '';
-                        soHTML += `<input type="text" class="inline-input" style="display:block; margin-bottom:4px;" value="${soVal}" ${canEditRec ? `onchange="updateSalesOrder('${a.id}', ${i}, this.value)"` : ''} placeholder="SO ${i+1}..." ${readOnlyAttr}>`;
+                        soHTML += `<input type="text" class="inline-input" style="display:block; margin-bottom:4px;" value="${soVal}" ${canEditRec ? `onchange="updateSalesOrder('${a.id}',${i}, this.value)"` : ''} placeholder="SO ${i+1}..." ${readOnlyAttr}>`;
                         
                         actionHTML += `<div style="display: flex; gap: 5px; height: 32px; margin-bottom: 4px;">`;
                         if(canDone) actionHTML += `<button class="done-btn icon-btn" title="Mark this unit as done" onclick="completeSingleUnit('${a.id}', ${i})">✔️</button>`;
