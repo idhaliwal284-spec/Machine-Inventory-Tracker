@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Signifi Solutions INC. - Asset Tracker</title>
+    
+    <!-- CROPPER.JS CSS -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet">
+
     <style>
         :root {
             --primary: #0056b3;
@@ -81,7 +85,7 @@
         button.delete-btn { background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; padding: 10px 20px; }
         button.done-btn { background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; }
         button.done-btn:hover { background-color: #218838; }
-        .icon-btn { width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+        .icon-btn { width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; letter-spacing: -1px; }
         .toggle-btn { background-color: #e2e6ea; color: #333; border: 1px solid #dae0e5; padding: 5px 10px; font-size: 12px; font-weight: bold; border-radius: 4px; cursor: pointer; display: inline-block; }
         .toggle-btn:hover { background-color: #d3d9df; }
         
@@ -99,38 +103,31 @@
         .admin-section { border: 1px solid var(--border); padding: 15px; margin-bottom: 20px; border-radius: 8px; overflow-x: hidden; }
         .name-slot { display: inline-block; margin-right: 10px; margin-bottom: 10px; }
         .name-slot label { display: block; font-size: 12px; color: #666; margin-bottom: 4px; font-weight: bold; }
-        .inline-input { padding: 6px; font-size: 13px; margin: 0; width: 100%; min-width: 100px; height: 32px; box-sizing: border-box; border: 1px solid #aaa; border-radius: 4px; }
+        .inline-input { padding: 6px; font-size: 13px; margin: 0; width: 100%; min-width: 80px; height: 32px; box-sizing: border-box; border: 1px solid #aaa; border-radius: 4px; }
         .inline-input:read-only { background-color: #e9ecef; color: #6c757d; border-color: #ddd; cursor: not-allowed; }
         
         .search-bar { width: 100%; padding: 10px; font-size: 14px; border: 2px solid var(--primary); border-radius: 6px; margin-bottom: 10px; box-sizing: border-box; }
         .dynamic-row { display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
-        .dynamic-row > * { margin: 0; flex: 1; min-width: 130px; }
+        .dynamic-row > * { margin: 0; flex: 1; min-width: 100px; }
         .batch-actions-row { display: flex; gap: 5px; margin-top: 5px; border-top: 1px solid #ddd; padding-top: 8px; }
         
         .perm-check { display: flex; align-items: center; gap: 5px; margin-bottom: 8px; font-size: 14px; cursor: pointer; }
         .perm-check input { margin: 0; width: 16px; height: 16px; cursor: pointer;}
         .perm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
-        /* --- LENS/OCR SCANNER OVERLAY STYLES --- */
-        #scanner-overlay {
+        /* --- OVERLAY MODALS FOR SCANNERS --- */
+        .overlay {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.85); z-index: 10000; align-items: center; justify-content: center; flex-direction: column;
         }
-        #scanner-box {
-            background: white; padding: 20px; border-radius: 8px; width: 90%; max-width: 500px; text-align: center;
-        }
-        #camera-wrapper {
-            position: relative; overflow: hidden; border-radius: 4px; margin-bottom: 15px; width: 100%; background: #000;
-        }
-        #camera-stream {
-            width: 100%; display: block; max-height: 400px; object-fit: cover;
-        }
-        /* The green targeting box */
-        #scanner-target-box {
-            position: absolute; top: 35%; left: 10%; width: 80%; height: 30%;
-            border: 3px solid #28a745; box-shadow: 0 0 0 9999px rgba(0,0,0,0.5);
-            pointer-events: none; border-radius: 4px;
-        }
+        .modal-box { background: white; padding: 20px; border-radius: 8px; width: 95%; max-width: 500px; text-align: center; }
+        
+        /* Barcode Reader Styles */
+        #barcode-reader { width: 100%; min-height: 250px; margin-bottom: 15px; }
+
+        /* Cropper Styles */
+        .cropper-container-wrapper { width: 100%; max-height: 50vh; overflow: hidden; margin-bottom: 15px; background: #eee; }
+        #cropper-image { max-width: 100%; display: block; }
     </style>
 
     <!-- FIREBASE SCRIPTS -->
@@ -138,8 +135,14 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
 
-    <!-- TESSERACT.JS OCR LIBRARY FOR TEXT SCANNING -->
+    <!-- BARCODE SCANNER LIBRARY -->
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    
+    <!-- TESSERACT.JS OCR LIBRARY -->
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
+    <!-- CROPPER.JS LIBRARY -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
 </head>
 <body>
 
@@ -156,28 +159,37 @@
         </div>
     </div>
 
-    <!-- ADVANCED TEXT SCANNER OVERLAY -->
-    <div id="scanner-overlay">
-        <div id="scanner-box">
-            <h3 style="margin-top:0; color: var(--primary);">📷 Lens Text Scanner</h3>
-            <p style="font-size: 13px; color: #666; margin-top: 0; margin-bottom: 10px;">Fit the text exactly inside the green box.</p>
+    <!-- BARCODE SCANNER OVERLAY -->
+    <div id="barcode-overlay" class="overlay">
+        <div class="modal-box">
+            <h3 style="margin-top:0; color: var(--primary);">||| Scan Barcode</h3>
+            <p style="font-size: 13px; color: #666; margin-top: 0; margin-bottom: 10px;">Align barcode within the window.</p>
+            <div id="barcode-reader"></div>
+            <button class="delete-btn" style="width:100%; font-weight:bold; margin-top: 10px;" onclick="closeBarcodeScanner()">Cancel</button>
+        </div>
+    </div>
+
+    <!-- PHOTO CROP OCR OVERLAY -->
+    <div id="cropper-overlay" class="overlay">
+        <div class="modal-box">
+            <h3 style="margin-top:0; color: var(--primary);">📷 Crop Text to Read</h3>
+            <p style="font-size: 13px; color: #666; margin-top: 0; margin-bottom: 10px;">Drag the corners to highlight ONLY the text you want.</p>
             
-            <div id="camera-wrapper">
-                <video id="camera-stream" autoplay playsinline></video>
-                <div id="scanner-target-box"></div>
+            <div class="cropper-container-wrapper">
+                <img id="cropper-image" src="">
             </div>
             
-            <!-- Hidden canvas used for high-contrast cropping -->
-            <canvas id="camera-canvas" style="display: none;"></canvas>
-            
-            <div id="scanner-status" style="font-size: 14px; font-weight: bold; color: #333; height: 20px; margin-bottom: 15px;">Ready</div>
+            <div id="ocr-status" style="font-size: 14px; font-weight: bold; color: var(--primary); height: 20px; margin-bottom: 15px;">Ready</div>
             
             <div style="display: flex; gap: 10px;">
-                <button id="btn-capture" class="action-btn" style="flex: 2; font-weight: bold; font-size: 16px;" onclick="captureAndScan()">📸 Capture Text</button>
-                <button class="delete-btn" style="flex: 1; font-weight: bold;" onclick="closeScanner()">Cancel</button>
+                <button id="btn-do-ocr" class="action-btn" style="flex: 2; font-weight: bold;" onclick="performCropAndOCR()">📸 Crop & Read</button>
+                <button class="delete-btn" style="flex: 1; font-weight: bold;" onclick="closeCropper()">Cancel</button>
             </div>
         </div>
     </div>
+
+    <!-- HIDDEN FILE INPUT FOR CAMERA -->
+    <input type="file" id="camera-file-input" accept="image/*" capture="environment" style="display:none;" onchange="handleCameraInput(event)">
 
     <!-- MAIN APP WRAPPER -->
     <div id="app-container">
@@ -487,10 +499,15 @@
         let expandedAdminRows = new Set();
         let expandedDashRows = new Set();
 
-        // Lens Camera Variables
-        let cameraStream = null;
+        // Scanner State Variables
         let currentScanTarget = null;
         let scanUpdateParams = null;
+        
+        // Barcode Library Instance
+        let html5QrCode = null;
+        
+        // Cropper Instance
+        let cropper = null;
 
         // ==========================================
         // 2. AUTHENTICATION & ACCESS CONTROL
@@ -553,7 +570,6 @@
                 assignments = localAssignments;
                 completedAssignments = JSON.parse(localStorage.getItem('asset_completed')) || [];
                 if (doc.exists) userPermissions = doc.data().userPermissions || {};
-                
                 window.hasRecoveredData = true; saveData(); 
             } else if (doc.exists) {
                 const data = doc.data();
@@ -585,87 +601,107 @@
         }
 
         // ==========================================
-        // 4. LENS / OCR TEXT SCANNER LOGIC (IMPROVED)
+        // 4. SCANNER LOGIC (BARCODE & CROP/OCR)
         // ==========================================
-        async function openScanner(targetId, updateCloudInfo = null) {
+
+        // --- BARCODE SCANNER ---
+        function openBarcodeScanner(targetId, updateCloudInfo = null) {
             currentScanTarget = targetId;
             scanUpdateParams = updateCloudInfo;
+            document.getElementById('barcode-overlay').style.display = 'flex';
             
-            const overlay = document.getElementById('scanner-overlay');
-            const status = document.getElementById('scanner-status');
-            const btn = document.getElementById('btn-capture');
-            const video = document.getElementById('camera-stream');
-            
-            overlay.style.display = 'flex';
-            status.innerText = "Connecting to camera...";
-            status.style.color = "#333";
-            btn.disabled = false;
+            html5QrCode = new Html5Qrcode("barcode-reader");
+            html5QrCode.start(
+                { facingMode: "environment" },
+                { fps: 10, qrbox: { width: 280, height: 120 } }, // Wider box for standard Code128 barcodes
+                (decodedText) => {
+                    // Success Callback
+                    const inputField = document.getElementById(currentScanTarget);
+                    if(inputField) {
+                        inputField.value = decodedText;
+                        if(scanUpdateParams) updateSerialNumber(scanUpdateParams.id, scanUpdateParams.index, decodedText);
+                    }
+                    closeBarcodeScanner();
+                },
+                (err) => { /* Ignore background scanning errors */ }
+            ).catch(err => {
+                alert("Camera error: " + err);
+                closeBarcodeScanner();
+            });
+        }
 
-            try {
-                cameraStream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: "environment" }
+        function closeBarcodeScanner() {
+            if(html5QrCode) {
+                try {
+                    html5QrCode.stop().then(() => {
+                        html5QrCode.clear();
+                        document.getElementById('barcode-overlay').style.display = 'none';
+                    });
+                } catch(e) { document.getElementById('barcode-overlay').style.display = 'none'; }
+            } else {
+                document.getElementById('barcode-overlay').style.display = 'none';
+            }
+            currentScanTarget = null; scanUpdateParams = null;
+        }
+
+        // --- PHOTO & CROP TEXT SCANNER (OCR) ---
+        function openTextScanner(targetId, updateCloudInfo = null) {
+            currentScanTarget = targetId;
+            scanUpdateParams = updateCloudInfo;
+            // Reset the hidden file input so taking a photo triggers onchange
+            const fileInput = document.getElementById('camera-file-input');
+            fileInput.value = ""; 
+            fileInput.click();
+        }
+
+        function handleCameraInput(event) {
+            const file = event.target.files[0];
+            if(!file) return; // User canceled the camera
+            
+            const url = URL.createObjectURL(file);
+            const imageElement = document.getElementById('cropper-image');
+            imageElement.src = url;
+            
+            document.getElementById('cropper-overlay').style.display = 'flex';
+            document.getElementById('ocr-status').innerText = "Ready";
+            document.getElementById('btn-do-ocr').disabled = false;
+
+            // Initialize Cropper.js after the image loads
+            if(cropper) cropper.destroy();
+            imageElement.onload = () => {
+                cropper = new Cropper(imageElement, {
+                    viewMode: 1, // Keep crop box inside canvas
+                    dragMode: 'crop',
+                    autoCropArea: 0.5,
+                    guides: true,
+                    center: true,
+                    highlight: false,
+                    cropBoxMovable: true,
+                    cropBoxResizable: true,
+                    toggleDragModeOnDblclick: false
                 });
-                video.srcObject = cameraStream;
-                status.innerText = "Fit text inside the green box & capture.";
-            } catch (err) {
-                status.innerText = "Camera error: " + err.message;
-                status.style.color = "#dc3545";
-                btn.disabled = true;
-            }
+            };
         }
 
-        function closeScanner() {
-            if (cameraStream) {
-                cameraStream.getTracks().forEach(track => track.stop());
-                cameraStream = null;
-            }
-            document.getElementById('camera-stream').srcObject = null;
-            document.getElementById('scanner-overlay').style.display = 'none';
-            currentScanTarget = null;
-            scanUpdateParams = null;
+        function closeCropper() {
+            if(cropper) { cropper.destroy(); cropper = null; }
+            document.getElementById('cropper-overlay').style.display = 'none';
+            document.getElementById('cropper-image').src = "";
+            currentScanTarget = null; scanUpdateParams = null;
         }
 
-        async function captureAndScan() {
-            if (!cameraStream) return;
-            const video = document.getElementById('camera-stream');
-            const canvas = document.getElementById('camera-canvas');
-            const status = document.getElementById('scanner-status');
-            const btn = document.getElementById('btn-capture');
-
-            // 1. Calculate the physical dimensions of the green target box relative to the video
-            // The green box is CSS: top:35%, left:10%, width:80%, height:30%
-            const cropX = video.videoWidth * 0.10;
-            const cropY = video.videoHeight * 0.35;
-            const cropWidth = video.videoWidth * 0.80;
-            const cropHeight = video.videoHeight * 0.30;
-
-            // 2. Size the hidden canvas to ONLY the cropped area
-            canvas.width = cropWidth;
-            canvas.height = cropHeight;
-            const ctx = canvas.getContext('2d');
+        async function performCropAndOCR() {
+            if(!cropper) return;
             
-            // 3. Draw only the targeted region onto the canvas
-            ctx.drawImage(video, cropX, cropY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
-
-            // 4. Image Processing: Convert to high contrast Black & White to help the AI
-            const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            for (let i = 0; i < imgData.data.length; i += 4) {
-                const avg = (imgData.data[i] + imgData.data[i + 1] + imgData.data[i + 2]) / 3;
-                // Thresholding for B&W
-                if (avg > 120) {
-                    imgData.data[i] = 255; imgData.data[i+1] = 255; imgData.data[i+2] = 255;
-                } else {
-                    imgData.data[i] = 0; imgData.data[i+1] = 0; imgData.data[i+2] = 0;
-                }
-            }
-            ctx.putImageData(imgData, 0, 0);
-
-            status.innerText = "⏳ Reading text...";
-            status.style.color = "#0056b3";
+            const btn = document.getElementById('btn-do-ocr');
+            const status = document.getElementById('ocr-status');
             btn.disabled = true;
+            status.innerText = "⏳ Loading AI Engine...";
+
+            // Get the cropped image data as a canvas
+            const canvas = cropper.getCroppedCanvas();
 
             try {
-                // 5. Run Tesseract ONLY on the cropped, B&W canvas
                 const result = await Tesseract.recognize(canvas, 'eng', {
                     logger: m => {
                         if(m.status === 'recognizing text'){
@@ -674,12 +710,11 @@
                     }
                 });
                 
-                // 6. Aggressive Cleanup Regex: Strip everything except Letters, Numbers, and Dashes
+                // Aggressive Cleanup: Keep only letters, numbers, and dashes. Remove spaces/newlines.
                 let extractedText = result.data.text.replace(/[^a-zA-Z0-9-]/g, '').toUpperCase();
                 
-                if (!extractedText || extractedText.length < 3) {
-                    status.innerText = "❌ Text unclear. Please try again.";
-                    status.style.color = "#dc3545";
+                if (!extractedText) {
+                    status.innerText = "❌ No text found in that area. Try again.";
                     btn.disabled = false;
                     return;
                 }
@@ -691,13 +726,13 @@
                         updateSerialNumber(scanUpdateParams.id, scanUpdateParams.index, extractedText);
                     }
                 }
-                closeScanner();
+                closeCropper();
             } catch (err) {
                 status.innerText = "❌ AI Error: " + err.message;
-                status.style.color = "#dc3545";
                 btn.disabled = false;
             }
         }
+
 
         // ==========================================
         // 5. USER MANAGEMENT LOGIC
@@ -1038,10 +1073,11 @@
                 
                 rowHTML += `<input type="text" class="inline-input" id="admin-keycode-${i}" value="${currentKeyCodes[i] || ''}" placeholder="Key Code ${i+1} (Optional)">`;
                 
-                // Camera Scanner Target for Assign Tab
-                rowHTML += `<div style="display:flex; gap:5px; flex:1; min-width:130px;">
+                // Add TWO scanner buttons for the Serial Input
+                rowHTML += `<div style="display:flex; gap:5px; flex:1; min-width:180px;">
                                 <input type="text" class="inline-input" id="admin-serial-${i}" value="${currentSerials[i] || ''}" placeholder="Serial ${i+1} (Optional)" style="margin:0;">
-                                <button type="button" class="action-btn icon-btn" title="Scan Text" onclick="openScanner('admin-serial-${i}')">📷</button>
+                                <button type="button" class="action-btn icon-btn" title="Scan Barcode" onclick="openBarcodeScanner('admin-serial-${i}')">|||</button>
+                                <button type="button" class="action-btn icon-btn" title="Photo & Crop Text" onclick="openTextScanner('admin-serial-${i}')">📷</button>
                             </div>`;
                 
                 if (!isSameSo) {
@@ -1327,7 +1363,8 @@
                 let sVal0 = currentSerials[0] || '';
                 serialHTML += `<div style="display:flex; gap:5px; margin-bottom:4px;">
                                 <input type="text" class="inline-input" style="margin:0;" id="scan-edit-${a.id}-0" value="${sVal0}" ${canEditRec ? `onchange="updateSerialNumber('${a.id}', 0, this.value)"` : ''} placeholder="Serial 1..." ${readOnlyAttr}>
-                                ${canEditRec ? `<button type="button" class="action-btn icon-btn" title="Scan Text" onclick="openScanner('scan-edit-${a.id}-0', {id: '${a.id}', index: 0})">📷</button>` : ''}
+                                ${canEditRec ? `<button type="button" class="action-btn icon-btn" title="Scan Barcode" onclick="openBarcodeScanner('scan-edit-${a.id}-0', {id: '${a.id}', index: 0})">|||</button>
+                                                <button type="button" class="action-btn icon-btn" title="Photo & Crop Text" onclick="openTextScanner('scan-edit-${a.id}-0', {id: '${a.id}', index: 0})">📷</button>` : ''}
                                </div>`;
                                
                 let soVal0 = currentSOs[0] || '';
@@ -1355,7 +1392,8 @@
                         let sVal = currentSerials[i] || '';
                         serialHTML += `<div style="display:flex; gap:5px; margin-bottom:4px;">
                                         <input type="text" class="inline-input" style="margin:0;" id="scan-edit-${a.id}-${i}" value="${sVal}" ${canEditRec ? `onchange="updateSerialNumber('${a.id}', ${i}, this.value)"` : ''} placeholder="Serial ${i+1}..." ${readOnlyAttr}>
-                                        ${canEditRec ? `<button type="button" class="action-btn icon-btn" title="Scan Text" onclick="openScanner('scan-edit-${a.id}-${i}', {id: '${a.id}', index: ${i}})">📷</button>` : ''}
+                                        ${canEditRec ? `<button type="button" class="action-btn icon-btn" title="Scan Barcode" onclick="openBarcodeScanner('scan-edit-${a.id}-${i}', {id: '${a.id}', index: ${i}})">|||</button>
+                                                        <button type="button" class="action-btn icon-btn" title="Photo & Crop Text" onclick="openTextScanner('scan-edit-${a.id}-${i}', {id: '${a.id}', index: ${i}})">📷</button>` : ''}
                                        </div>`;
                                        
                         let soVal = currentSOs[i] || '';
