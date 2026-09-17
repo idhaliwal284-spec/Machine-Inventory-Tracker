@@ -503,10 +503,7 @@
         let currentScanTarget = null;
         let scanUpdateParams = null;
         
-        // Barcode Library Instance
         let html5QrCode = null;
-        
-        // Cropper Instance
         let cropper = null;
 
         // ==========================================
@@ -547,16 +544,18 @@
             
             const perms = userPermissions[currentUser.email] || {};
             
+            // Hide/Show Home Screen Grid Buttons
             document.getElementById('btn-home-assign').style.display = perms.canAssign || perms.isAdmin ? 'flex' : 'none';
             document.getElementById('btn-home-inventory').style.display = perms.canAddStock || perms.canManageNames || perms.isAdmin ? 'flex' : 'none';
             document.getElementById('btn-home-records').style.display = perms.canViewRecords || perms.isAdmin ? 'flex' : 'none';
             document.getElementById('btn-home-users').style.display = perms.isAdmin ? 'flex' : 'none';
             
+            // Hide/Show Internal Sections
             document.getElementById('section-products').style.display = perms.canManageNames || perms.isAdmin ? 'block' : 'none';
             document.getElementById('section-inventory').style.display = perms.canAddStock || perms.isAdmin ? 'block' : 'none';
             
             renderUsersTable();
-            renderAdminTables();
+            renderAdminTables(); 
         }
 
         // ==========================================
@@ -570,6 +569,7 @@
                 assignments = localAssignments;
                 completedAssignments = JSON.parse(localStorage.getItem('asset_completed')) || [];
                 if (doc.exists) userPermissions = doc.data().userPermissions || {};
+                
                 window.hasRecoveredData = true; saveData(); 
             } else if (doc.exists) {
                 const data = doc.data();
@@ -613,9 +613,8 @@
             html5QrCode = new Html5Qrcode("barcode-reader");
             html5QrCode.start(
                 { facingMode: "environment" },
-                { fps: 10, qrbox: { width: 280, height: 120 } }, // Wider box for standard Code128 barcodes
+                { fps: 10, qrbox: { width: 280, height: 120 } }, 
                 (decodedText) => {
-                    // Success Callback
                     const inputField = document.getElementById(currentScanTarget);
                     if(inputField) {
                         inputField.value = decodedText;
@@ -623,7 +622,7 @@
                     }
                     closeBarcodeScanner();
                 },
-                (err) => { /* Ignore background scanning errors */ }
+                (err) => { }
             ).catch(err => {
                 alert("Camera error: " + err);
                 closeBarcodeScanner();
@@ -648,7 +647,6 @@
         function openTextScanner(targetId, updateCloudInfo = null) {
             currentScanTarget = targetId;
             scanUpdateParams = updateCloudInfo;
-            // Reset the hidden file input so taking a photo triggers onchange
             const fileInput = document.getElementById('camera-file-input');
             fileInput.value = ""; 
             fileInput.click();
@@ -656,7 +654,7 @@
 
         function handleCameraInput(event) {
             const file = event.target.files[0];
-            if(!file) return; // User canceled the camera
+            if(!file) return; 
             
             const url = URL.createObjectURL(file);
             const imageElement = document.getElementById('cropper-image');
@@ -666,11 +664,10 @@
             document.getElementById('ocr-status').innerText = "Ready";
             document.getElementById('btn-do-ocr').disabled = false;
 
-            // Initialize Cropper.js after the image loads
             if(cropper) cropper.destroy();
             imageElement.onload = () => {
                 cropper = new Cropper(imageElement, {
-                    viewMode: 1, // Keep crop box inside canvas
+                    viewMode: 1, 
                     dragMode: 'crop',
                     autoCropArea: 0.5,
                     guides: true,
@@ -698,11 +695,43 @@
             btn.disabled = true;
             status.innerText = "⏳ Loading AI Engine...";
 
-            // Get the cropped image data as a canvas
-            const canvas = cropper.getCroppedCanvas();
+            // 1. Get raw cropped area
+            const originalCanvas = cropper.getCroppedCanvas();
+            
+            // 2. UPSCALE: Multiply size by 3 so Tesseract can clearly see the characters
+            const scale = 3;
+            const processCanvas = document.createElement('canvas');
+            processCanvas.width = originalCanvas.width * scale;
+            processCanvas.height = originalCanvas.height * scale;
+            const ctx = processCanvas.getContext('2d');
+            
+            // Disable smoothing so edges stay sharp
+            ctx.imageSmoothingEnabled = false; 
+            ctx.drawImage(originalCanvas, 0, 0, processCanvas.width, processCanvas.height);
+
+            // 3. IMAGE PRE-PROCESSING: Convert to pure Black & White to destroy background texture
+            const imgData = ctx.getImageData(0, 0, processCanvas.width, processCanvas.height);
+            const data = imgData.data;
+            
+            // Calculate average brightness to determine the perfect threshold
+            let totalBrightness = 0;
+            for (let i = 0; i < data.length; i += 4) {
+                totalBrightness += (data[i] * 0.299 + data[i+1] * 0.587 + data[i+2] * 0.114);
+            }
+            let avgBrightness = totalBrightness / (data.length / 4);
+            let threshold = avgBrightness * 0.9; // Bias slightly darker than average
+
+            // Apply strict B&W filter
+            for (let i = 0; i < data.length; i += 4) {
+                let brightness = (data[i] * 0.299 + data[i+1] * 0.587 + data[i+2] * 0.114);
+                let val = brightness > threshold ? 255 : 0;
+                data[i] = val; data[i+1] = val; data[i+2] = val;
+            }
+            ctx.putImageData(imgData, 0, 0);
 
             try {
-                const result = await Tesseract.recognize(canvas, 'eng', {
+                // Pass processed image to AI
+                const result = await Tesseract.recognize(processCanvas, 'eng', {
                     logger: m => {
                         if(m.status === 'recognizing text'){
                             status.innerText = `⏳ Extracting text... ${Math.round(m.progress * 100)}%`;
@@ -710,11 +739,12 @@
                     }
                 });
                 
-                // Aggressive Cleanup: Keep only letters, numbers, and dashes. Remove spaces/newlines.
-                let extractedText = result.data.text.replace(/[^a-zA-Z0-9-]/g, '').toUpperCase();
+                // 4. CLEANUP: Strip all spaces, newlines, and lowercase letters completely.
+                let extractedText = result.data.text.replace(/[^A-Z0-9-]/gi, '').toUpperCase();
                 
                 if (!extractedText) {
-                    status.innerText = "❌ No text found in that area. Try again.";
+                    status.innerText = "❌ No text found. Try cropping tighter.";
+                    status.style.color = "#dc3545";
                     btn.disabled = false;
                     return;
                 }
@@ -729,6 +759,7 @@
                 closeCropper();
             } catch (err) {
                 status.innerText = "❌ AI Error: " + err.message;
+                status.style.color = "#dc3545";
                 btn.disabled = false;
             }
         }
@@ -1073,7 +1104,6 @@
                 
                 rowHTML += `<input type="text" class="inline-input" id="admin-keycode-${i}" value="${currentKeyCodes[i] || ''}" placeholder="Key Code ${i+1} (Optional)">`;
                 
-                // Add TWO scanner buttons for the Serial Input
                 rowHTML += `<div style="display:flex; gap:5px; flex:1; min-width:180px;">
                                 <input type="text" class="inline-input" id="admin-serial-${i}" value="${currentSerials[i] || ''}" placeholder="Serial ${i+1} (Optional)" style="margin:0;">
                                 <button type="button" class="action-btn icon-btn" title="Scan Barcode" onclick="openBarcodeScanner('admin-serial-${i}')">|||</button>
