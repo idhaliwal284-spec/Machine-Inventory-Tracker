@@ -474,15 +474,15 @@
         // ==========================================
         // 1. FIREBASE CONFIGURATION
         // ==========================================
-const firebaseConfig = {
-  apiKey: "AIzaSyCA4fc19l4ZWFNn82RXJZdkar0yX1PslVk",
-  authDomain: "inventory-tracker-a2a8e.firebaseapp.com",
-  databaseURL: "https://inventory-tracker-a2a8e-default-rtdb.firebaseio.com",
-  projectId: "inventory-tracker-a2a8e",
-  storageBucket: "inventory-tracker-a2a8e.firebasestorage.app",
-  messagingSenderId: "223209852536",
-  appId: "1:223209852536:web:0a0f04d3b34a16f77d278d"
-};
+        const firebaseConfig = {
+          apiKey: "AIzaSyCA4fc19l4ZWFNn82RXJZdkar0yX1PslVk",
+          authDomain: "inventory-tracker-a2a8e.firebaseapp.com",
+          databaseURL: "https://inventory-tracker-a2a8e-default-rtdb.firebaseio.com",
+          projectId: "inventory-tracker-a2a8e",
+          storageBucket: "inventory-tracker-a2a8e.firebasestorage.app",
+          messagingSenderId: "223209852536",
+          appId: "1:223209852536:web:0a0f04d3b34a16f77d278d"
+        };
 
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
@@ -562,22 +562,23 @@ const firebaseConfig = {
         // 3. REAL-TIME CLOUD SYNC
         // ==========================================
         db.collection("tracker").doc("trackerData").onSnapshot((doc) => {
-            const localAssignments = JSON.parse(localStorage.getItem('asset_assignments')) || [];
-            if (localAssignments.length > 0 && !window.hasRecoveredData) {
-                PRODUCTS = JSON.parse(localStorage.getItem('asset_products')) || Array.from({length: 9}, (_, i) => `Product ${i + 1}`);
-                inventory = JSON.parse(localStorage.getItem('asset_inventory')) || {};
-                assignments = localAssignments;
-                completedAssignments = JSON.parse(localStorage.getItem('asset_completed')) || [];
-                if (doc.exists) userPermissions = doc.data().userPermissions || {};
-                
-                window.hasRecoveredData = true; saveData(); 
-            } else if (doc.exists) {
+            // FIX: Prioritize Firebase Data. Only recover local storage if the Firebase document does not exist yet.
+            if (doc.exists) {
                 const data = doc.data();
                 PRODUCTS = data.PRODUCTS || PRODUCTS;
                 inventory = data.inventory || {};
                 assignments = data.assignments || [];
                 completedAssignments = data.completedAssignments || [];
                 userPermissions = data.userPermissions || {};
+            } else {
+                const localAssignments = JSON.parse(localStorage.getItem('asset_assignments')) || [];
+                if (localAssignments.length > 0) {
+                    PRODUCTS = JSON.parse(localStorage.getItem('asset_products')) || Array.from({length: 9}, (_, i) => `Product ${i + 1}`);
+                    inventory = JSON.parse(localStorage.getItem('asset_inventory')) || {};
+                    assignments = localAssignments;
+                    completedAssignments = JSON.parse(localStorage.getItem('asset_completed')) || [];
+                    saveData(); // Migrate local data to the cloud
+                }
             }
             
             if (Object.keys(userPermissions).length === 0 && currentUser) {
@@ -1396,20 +1397,20 @@ const firebaseConfig = {
                     
                     for(let i=1; i < a.qty; i++) {
                         let vVal = currentVersions[i] || '';
-                        versionHTML += `<input type="text" class="inline-input" style="display:block; margin-bottom:4px;" value="${vVal}" ${canEditRec ? `onchange="updateVersion('${a.id}', ${i}, this.value)"` : ''} placeholder="Ver ${i+1}..." ${readOnlyAttr}>`;
+                        versionHTML += `<input type="text" class="inline-input" style="display:block; margin-bottom:4px;" value="${vVal}" ${canEditRec ? `onchange="updateVersion('${a.id}',${i}, this.value)"` : ''} placeholder="Ver ${i+1}..." ${readOnlyAttr}>`;
                         
                         let kVal = currentKeyCodes[i] || '';
-                        keyCodeHTML += `<input type="text" class="inline-input" style="display:block; margin-bottom:4px;" value="${kVal}" ${canEditRec ? `onchange="updateKeyCode('${a.id}', ${i}, this.value)"` : ''} placeholder="Key ${i+1}..." ${readOnlyAttr}>`;
+                        keyCodeHTML += `<input type="text" class="inline-input" style="display:block; margin-bottom:4px;" value="${kVal}" ${canEditRec ? `onchange="updateKeyCode('${a.id}',${i}, this.value)"` : ''} placeholder="Key ${i+1}..." ${readOnlyAttr}>`;
                         
                         let sVal = currentSerials[i] || '';
                         serialHTML += `<div style="display:flex; gap:5px; margin-bottom:4px;">
-                                        <input type="text" class="inline-input" style="margin:0;" id="scan-edit-${a.id}-${i}" value="${sVal}" ${canEditRec ? `onchange="updateSerialNumber('${a.id}', ${i}, this.value)"` : ''} placeholder="Serial ${i+1}..." ${readOnlyAttr}>
-                                        ${canEditRec ? `<button type="button" class="action-btn icon-btn" title="Scan Barcode" onclick="openBarcodeScanner('scan-edit-${a.id}-${i}', {id: '${a.id}', index: ${i}})">|||</button>
-                                                        <button type="button" class="action-btn icon-btn" title="Photo & Crop Text" onclick="openTextScanner('scan-edit-${a.id}-${i}', {id: '${a.id}', index: ${i}})">📷</button>` : ''}
+                                        <input type="text" class="inline-input" style="margin:0;" id="scan-edit-${a.id}-${i}" value="${sVal}" ${canEditRec ? `onchange="updateSerialNumber('${a.id}',${i}, this.value)"` : ''} placeholder="Serial ${i+1}..." ${readOnlyAttr}>
+                                        ${canEditRec ? `<button type="button" class="action-btn icon-btn" title="Scan Barcode" onclick="openBarcodeScanner('scan-edit-${a.id}-${i}', {id: '${a.id}', index:${i}})">|||</button>
+                                                        <button type="button" class="action-btn icon-btn" title="Photo & Crop Text" onclick="openTextScanner('scan-edit-${a.id}-${i}', {id: '${a.id}', index:${i}})">📷</button>` : ''}
                                        </div>`;
                                        
                         let soVal = currentSOs[i] || '';
-                        soHTML += `<input type="text" class="inline-input" style="display:block; margin-bottom:4px;" value="${soVal}" ${canEditRec ? `onchange="updateSalesOrder('${a.id}', ${i}, this.value)"` : ''} placeholder="SO ${i+1}..." ${readOnlyAttr}>`;
+                        soHTML += `<input type="text" class="inline-input" style="display:block; margin-bottom:4px;" value="${soVal}" ${canEditRec ? `onchange="updateSalesOrder('${a.id}',${i}, this.value)"` : ''} placeholder="SO ${i+1}..." ${readOnlyAttr}>`;
                         
                         actionHTML += `<div style="display: flex; gap: 5px; height: 32px; margin-bottom: 4px;">`;
                         if(canDone) actionHTML += `<button class="done-btn icon-btn" title="Mark this unit as done" onclick="completeSingleUnit('${a.id}', ${i})">✔️</button>`;
