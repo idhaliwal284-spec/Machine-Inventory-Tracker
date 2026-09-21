@@ -537,11 +537,9 @@
 
         function applyPermissionsUI() {
             if (!currentUser) return;
-            if (Object.keys(userPermissions).length === 0) {
-                userPermissions[currentUser.email] = { isAdmin: true, canAssign: true, canManageNames: true, canAddStock: true, canViewRecords: true, canEditRecords: true, canMarkDone: true, canDeleteRecords: true };
-                saveData();
-            }
             
+            // FIX: Removed the race-condition where this function automatically called 
+            // saveData() before Firebase had loaded the real data.
             const perms = userPermissions[currentUser.email] || {};
             
             // Hide/Show Home Screen Grid Buttons
@@ -562,7 +560,6 @@
         // 3. REAL-TIME CLOUD SYNC
         // ==========================================
         db.collection("tracker").doc("trackerData").onSnapshot((doc) => {
-            // FIX: Prioritize Firebase Data. Only recover local storage if the Firebase document does not exist yet.
             if (doc.exists) {
                 const data = doc.data();
                 PRODUCTS = data.PRODUCTS || PRODUCTS;
@@ -577,10 +574,10 @@
                     inventory = JSON.parse(localStorage.getItem('asset_inventory')) || {};
                     assignments = localAssignments;
                     completedAssignments = JSON.parse(localStorage.getItem('asset_completed')) || [];
-                    saveData(); // Migrate local data to the cloud
                 }
             }
             
+            // Only auto-generate admin rights if the user list is TRULY empty after checking Firebase.
             if (Object.keys(userPermissions).length === 0 && currentUser) {
                 userPermissions[currentUser.email] = { isAdmin: true, canAssign: true, canManageNames: true, canAddStock: true, canViewRecords: true, canEditRecords: true, canMarkDone: true, canDeleteRecords: true };
                 saveData();
