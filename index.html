@@ -496,7 +496,6 @@
         let userPermissions = {}; 
         
         let currentUser = null;
-        let isDataLoaded = false; // CRITICAL: Safety lock to prevent wiping cloud database
         let expandedAdminRows = new Set();
         let expandedDashRows = new Set();
 
@@ -539,6 +538,8 @@
         function applyPermissionsUI() {
             if (!currentUser) return;
             
+            // FIX: Removed the race-condition where this function automatically called 
+            // saveData() before Firebase had loaded the real data.
             const perms = userPermissions[currentUser.email] || {};
             
             // Hide/Show Home Screen Grid Buttons
@@ -560,24 +561,13 @@
         // ==========================================
         db.collection("tracker").doc("trackerData").onSnapshot((doc) => {
             if (doc.exists) {
-                // Happy Path: Data successfully retrieved from Firebase
                 const data = doc.data();
                 PRODUCTS = data.PRODUCTS || PRODUCTS;
                 inventory = data.inventory || {};
                 assignments = data.assignments || [];
                 completedAssignments = data.completedAssignments || [];
                 userPermissions = data.userPermissions || {};
-                
-                // Backup successfully loaded cloud data to LocalStorage
-                localStorage.setItem('asset_products', JSON.stringify(PRODUCTS));
-                localStorage.setItem('asset_inventory', JSON.stringify(inventory));
-                localStorage.setItem('asset_assignments', JSON.stringify(assignments));
-                localStorage.setItem('asset_completed', JSON.stringify(completedAssignments));
-                
-                isDataLoaded = true; // Unlock saving
             } else {
-                // Recovery Path: The document does not exist (either brand new, or accidentally deleted)
-                // We will attempt to restore from local storage cache if available.
                 const localAssignments = JSON.parse(localStorage.getItem('asset_assignments')) || [];
                 if (localAssignments.length > 0) {
                     PRODUCTS = JSON.parse(localStorage.getItem('asset_products')) || Array.from({length: 9}, (_, i) => `Product ${i + 1}`);
@@ -585,16 +575,12 @@
                     assignments = localAssignments;
                     completedAssignments = JSON.parse(localStorage.getItem('asset_completed')) || [];
                 }
-                
-                isDataLoaded = true; // Unlock saving
-                
-                // Only create the initial admin user if the database is truly empty and this is the first setup.
-                if (Object.keys(userPermissions).length === 0 && currentUser) {
-                    userPermissions[currentUser.email] = { isAdmin: true, canAssign: true, canManageNames: true, canAddStock: true, canViewRecords: true, canEditRecords: true, canMarkDone: true, canDeleteRecords: true };
-                }
-                
-                // Push the recovered or initial data to the cloud
-                saveData(); 
+            }
+            
+            // Only auto-generate admin rights if the user list is TRULY empty after checking Firebase.
+            if (Object.keys(userPermissions).length === 0 && currentUser) {
+                userPermissions[currentUser.email] = { isAdmin: true, canAssign: true, canManageNames: true, canAddStock: true, canViewRecords: true, canEditRecords: true, canMarkDone: true, canDeleteRecords: true };
+                saveData();
             }
             
             populateDropdowns();
@@ -607,21 +593,9 @@
         });
 
         function saveData() {
-            if (!isDataLoaded) {
-                console.warn("Save blocked: Cloud data has not finished loading.");
-                return;
-            }
-            
-            // Save to Firebase
             db.collection("tracker").doc("trackerData").set({
                 PRODUCTS, inventory, assignments, completedAssignments, userPermissions
             });
-            
-            // Backup to LocalStorage automatically to prevent future total loss
-            localStorage.setItem('asset_products', JSON.stringify(PRODUCTS));
-            localStorage.setItem('asset_inventory', JSON.stringify(inventory));
-            localStorage.setItem('asset_assignments', JSON.stringify(assignments));
-            localStorage.setItem('asset_completed', JSON.stringify(completedAssignments));
         }
 
         // ==========================================
@@ -732,7 +706,7 @@
             ctx.drawImage(originalCanvas, 0, 0, processCanvas.width, processCanvas.height);
 
             try {
-                // 3. Run Standard Tesseract
+                // 3. Run Standard Tesseract (No restrictive rules that make it fail)
                 const result = await Tesseract.recognize(processCanvas, 'eng', {
                     logger: m => {
                         if(m.status === 'recognizing text'){
@@ -741,10 +715,10 @@
                     }
                 });
                 
-                // 4. Post-Process Cleanup
+                // 4. Post-Process Cleanup: Keep letters, numbers, and dashes.
                 let extractedText = result.data.text.replace(/[^A-Za-z0-9-]/g, '').toUpperCase();
                 
-                // 5. Fallback
+                // 5. Fallback: If the strict regex stripped everything, just give the user what it saw
                 if (!extractedText) {
                     extractedText = result.data.text.trim();
                 }
