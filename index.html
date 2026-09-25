@@ -512,8 +512,6 @@
         auth.onAuthStateChanged(user => {
             if (user) {
                 currentUser = user;
-                userPermissions[user.email] = { isAdmin: true };
-saveData();
                 document.getElementById('login-screen').style.display = 'none';
                 document.getElementById('app-container').style.display = 'block';
                 document.getElementById('user-display').innerText = user.email;
